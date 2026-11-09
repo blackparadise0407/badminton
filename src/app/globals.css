@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
+
+  --color-floor: #f3f6f9;
+  --color-paper: #ffffff;
+  --color-ink: #14212b;
+  --color-muted: #5d6b78;
+  --color-line: #d9e0e6;
+
+  --color-court: #1f5c99;
+  --color-court-dark: #174a7c;
+  --color-court-tint: #e6eef7;
+
+  --color-paid: #16703b;
+  --color-paid-tint: #e3f4ea;
+  --color-partial: #9a5b00;
+  --color-partial-tint: #fbf0d9;
+  --color-unpaid: #b3321f;
+  --color-unpaid-tint: #fbe6e3;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--color-floor);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  } /* stops iOS zoom on focus */
+  :focus-visible {
+    outline: 2px solid var(--color-court);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-paper px-4 text-[15px] font-medium text-ink active:bg-floor;
+  }
+  .btn-sm {
+    @apply min-h-9 px-3 text-sm;
+  }
+  .btn-primary {
+    @apply border-court bg-court text-white active:bg-court-dark;
+  }
+  .btn-paid {
+    @apply border-paid bg-paid text-white active:bg-paid;
+  }
+  .btn-danger {
+    @apply border-unpaid text-unpaid;
+  }
+
+  .field {
+    @apply min-h-11 w-full rounded-lg border border-line bg-paper px-3 text-ink;
+  }
+  .label {
+    @apply mb-1 block text-sm text-muted;
+  }
+
+  .panel {
+    @apply rounded-xl border border-line bg-paper;
+  }
+  .list {
+    @apply divide-y divide-line overflow-hidden rounded-xl border border-line bg-paper;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .chip-paid {
+    @apply bg-paid-tint text-paid;
+  }
+  .chip-partial {
+    @apply bg-partial-tint text-partial;
+  }
+  .chip-unpaid {
+    @apply bg-unpaid-tint text-unpaid;
+  }
+}
