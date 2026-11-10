@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { attendances, players, sessions } from "@/db/schema";
@@ -68,16 +68,25 @@ export async function addAttendee(sessionId: number, formData: FormData) {
   await requireAdmin();
   const playerId = Number(formData.get("playerId"));
   if (!Number.isInteger(playerId)) return;
-  const [pl] = await db.select().from(players).where(eq(players.id, playerId));
+  const [pl] = await db
+    .select({ id: players.id })
+    .from(players)
+    .where(eq(players.id, playerId));
   if (!pl) return;
+
+  const [h] = await db
+    .select({
+      start: sql<number | null>`min(${attendances.startHour})`,
+      end: sql<number | null>`max(${attendances.endHour})`,
+    })
+    .from(attendances)
+    .where(eq(attendances.sessionId, sessionId));
+  const startHour = h?.start != null ? Number(h.start) : 19;
+  const endHour = h?.end != null ? Number(h.end) : 21;
+
   await db
     .insert(attendances)
-    .values({
-      sessionId,
-      playerId,
-      startHour: 19,
-      endHour: 19 + pl.defaultHours,
-    })
+    .values({ sessionId, playerId, startHour, endHour })
     .onConflictDoNothing();
   refresh();
 }
