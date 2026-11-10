@@ -32,11 +32,8 @@ export default async function Dashboard() {
         <div className="text-[19px] font-bold tabular-nums">{vnd(r.left)}</div>
       </div>
       <div className="flex gap-2">
-        <form action={markPaid.bind(null, r.id, "bank")}>
-          <button className="btn btn-paid">Paid by bank</button>
-        </form>
-        <form action={markPaid.bind(null, r.id, "cash")}>
-          <button className="btn">Paid cash</button>
+        <form action={markPaid.bind(null, r.id)}>
+          <button className="btn btn-paid">Paid</button>
         </form>
       </div>
     </li>

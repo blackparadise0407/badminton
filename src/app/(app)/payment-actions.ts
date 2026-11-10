@@ -13,10 +13,6 @@ const refresh = () => {
   revalidatePath("/");
   revalidatePath("/sessions/[id]", "page");
 };
-const asMethod = (v: unknown): "bank" | "cash" => {
-  if (v !== "bank" && v !== "cash") throw new Error("Invalid method");
-  return v;
-};
 
 async function getSaved(id: number) {
   const [a] = await db.select().from(attendances).where(eq(attendances.id, id));
@@ -25,7 +21,7 @@ async function getSaved(id: number) {
   return a;
 }
 
-export async function markPaid(id: number, method: "bank" | "cash") {
+export async function markPaid(id: number) {
   await requireAdmin();
   const a = await getSaved(id);
   await db
@@ -33,7 +29,6 @@ export async function markPaid(id: number, method: "bank" | "cash") {
     .set({
       amountPaid: a.amountDue,
       paidAt: new Date(),
-      method: asMethod(method),
     })
     .where(eq(attendances.id, id));
   refresh();
@@ -43,7 +38,7 @@ export async function markUnpaid(id: number) {
   await requireAdmin();
   await db
     .update(attendances)
-    .set({ amountPaid: 0, paidAt: null, method: null })
+    .set({ amountPaid: 0, paidAt: null })
     .where(eq(attendances.id, id));
   refresh();
 }
@@ -52,15 +47,14 @@ export async function markUnpaid(id: number) {
 export async function recordPartial(id: number, formData: FormData) {
   await requireAdmin();
   const a = await getSaved(id);
-  const method = asMethod(formData.get("method"));
   const amount = Math.max(0, Math.round(Number(formData.get("amount")) || 0));
 
   if (amount <= 0) return markUnpaid(id);
-  if (amount >= a.amountDue) return markPaid(id, method);
+  if (amount >= a.amountDue) return markPaid(id);
 
   await db
     .update(attendances)
-    .set({ amountPaid: amount, paidAt: null, method })
+    .set({ amountPaid: amount, paidAt: null })
     .where(eq(attendances.id, id));
   refresh();
 }

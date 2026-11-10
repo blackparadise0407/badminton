@@ -28,6 +28,7 @@ export const sessions = pgTable("sessions", {
   courtRatePerHour: integer("court_rate_per_hour").notNull(),
   shuttlePrice: integer("shuttle_price").notNull(),
   shuttlesUsed: integer("shuttles_used").notNull().default(0),
+  drinksTotal: integer("drinks_total").notNull().default(0),
   snackTotal: integer("snack_total").notNull().default(0),
   status: text("status", { enum: ["active", "archived"] })
     .notNull()
@@ -48,20 +49,10 @@ export const attendances = pgTable(
     startHour: real("start_hour").notNull(),
     endHour: real("end_hour").notNull(),
     joinedSnack: boolean("joined_snack").notNull().default(false),
+    joinedDrinks: boolean("joined_drinks").notNull().default(true),
     amountDue: integer("amount_due").notNull().default(0),
     amountPaid: integer("amount_paid").notNull().default(0),
     paidAt: timestamp("paid_at"),
-    method: text("method", { enum: ["bank", "cash"] }),
   },
   (t) => [uniqueIndex("att_session_player").on(t.sessionId, t.playerId)],
 );
-
-export const items = pgTable("items", {
-  id: serial("id").primaryKey(),
-  attendanceId: integer("attendance_id")
-    .notNull()
-    .references(() => attendances.id, { onDelete: "cascade" }),
-  label: text("label").notNull(),
-  qty: integer("qty").notNull().default(1),
-  unitPrice: integer("unit_price").notNull(),
-});

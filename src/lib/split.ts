@@ -5,6 +5,7 @@ export type SplitSession = {
   courtRatePerHour: number;
   shuttlePrice: number;
   shuttlesUsed: number;
+  drinksTotal: number;
   snackTotal: number;
 };
 
@@ -12,8 +13,8 @@ export type SplitAttendee = {
   id: number;
   startHour: number;
   endHour: number;
+  joinedDrinks: boolean;
   joinedSnack: boolean;
-  drinks: number; // total VND of this person's drinks
 };
 
 export type SplitLine = {
@@ -36,6 +37,15 @@ export type SplitResult = {
 // round to cents first to kill floating-point noise, then ceil to ROUND_TO
 const roundUp = (x: number) =>
   Math.ceil(Math.round(x * 100) / 100 / ROUND_TO) * ROUND_TO;
+
+// A shared bill split equally among those who joined.
+// If the bill exists but nobody is ticked, everyone pays an equal share, so you are never short.
+function sharedShares(total: number, joined: boolean[]): number[] {
+  if (total <= 0) return joined.map(() => 0);
+  const count = joined.filter(Boolean).length;
+  if (count === 0) return joined.map(() => total / joined.length);
+  return joined.map((j) => (j ? total / count : 0));
+}
 
 export function calculateSplit(
   session: SplitSession,
@@ -73,34 +83,35 @@ export function calculateSplit(
   const totalHours = hours.reduce((t, h) => t + h, 0);
   const shuttleTotal = session.shuttlesUsed * session.shuttlePrice;
 
-  // ---- snack ----
-  const snackers = attendees.filter((a) => a.joinedSnack).length;
+  // ---- shared bills ----
+  const drinks = sharedShares(
+    session.drinksTotal,
+    attendees.map((a) => a.joinedDrinks),
+  );
+  const snack = sharedShares(
+    session.snackTotal,
+    attendees.map((a) => a.joinedSnack),
+  );
 
   const lines: SplitLine[] = attendees.map((a, i) => {
     const shuttle = totalHours > 0 ? (shuttleTotal * hours[i]) / totalHours : 0;
-    const snack =
-      session.snackTotal === 0
-        ? 0
-        : snackers > 0
-          ? a.joinedSnack
-            ? session.snackTotal / snackers
-            : 0
-          : session.snackTotal / n;
-    const exact = court[i] + shuttle + a.drinks + snack;
+    const exact = court[i] + shuttle + drinks[i] + snack[i];
     return {
       id: a.id,
       hours: hours[i],
       court: Math.round(court[i]),
       shuttle: Math.round(shuttle),
-      drinks: a.drinks,
-      snack: Math.round(snack),
+      drinks: Math.round(drinks[i]),
+      snack: Math.round(snack[i]),
       total: roundUp(exact),
     };
   });
 
-  const drinksTotal = attendees.reduce((t, a) => t + a.drinks, 0);
   const totalSpent = Math.round(
-    slotCost * (maxE - minS) + shuttleTotal + session.snackTotal + drinksTotal,
+    slotCost * (maxE - minS) +
+      shuttleTotal +
+      session.drinksTotal +
+      session.snackTotal,
   );
   const totalOwed = lines.reduce((t, l) => t + l.total, 0);
 

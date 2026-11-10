@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { attendances, items, players, sessions } from "@/db/schema";
+import { attendances, players, sessions } from "@/db/schema";
 import { loadSessionData } from "@/lib/session-data";
 
 async function requireAdmin() {
@@ -16,8 +16,8 @@ const toInt = (v: FormDataEntryValue | null) => {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 };
 const refresh = () => {
+  revalidatePath("/");
   revalidatePath("/sessions/[id]", "page");
-  revalidatePath("/sessions");
   revalidatePath("/sessions");
 };
 
@@ -33,6 +33,7 @@ export async function updateSession(id: number, formData: FormData) {
       courtRatePerHour,
       shuttlePrice: toInt(formData.get("shuttlePrice")),
       shuttlesUsed: toInt(formData.get("shuttlesUsed")),
+      drinksTotal: toInt(formData.get("drinksTotal")),
       snackTotal: toInt(formData.get("snackTotal")),
     })
     .where(eq(sessions.id, id));
@@ -52,18 +53,14 @@ export async function updateAttendance(id: number, formData: FormData) {
   }
   await db
     .update(attendances)
-    .set({
-      startHour,
-      endHour,
-      joinedSnack: formData.get("joinedSnack") === "on",
-    })
+    .set({ startHour, endHour })
     .where(eq(attendances.id, id));
   refresh();
 }
 
 export async function removeAttendance(id: number) {
   await requireAdmin();
-  await db.delete(attendances).where(eq(attendances.id, id)); // items cascade
+  await db.delete(attendances).where(eq(attendances.id, id));
   refresh();
 }
 
@@ -85,47 +82,23 @@ export async function addAttendee(sessionId: number, formData: FormData) {
   refresh();
 }
 
-export async function addDrink(
-  attendanceId: number,
-  label: string,
-  unitPrice: number,
+// Tap on a player row: in or out of the drinks bill / the snack bill
+export async function toggleShared(
+  id: number,
+  field: "joinedDrinks" | "joinedSnack",
 ) {
   await requireAdmin();
-  const [existing] = await db
-    .select()
-    .from(items)
-    .where(
-      and(
-        eq(items.attendanceId, attendanceId),
-        eq(items.label, label),
-        eq(items.unitPrice, unitPrice),
-      ),
-    );
-  if (existing) {
-    await db
-      .update(items)
-      .set({ qty: existing.qty + 1 })
-      .where(eq(items.id, existing.id));
-  } else {
-    await db.insert(items).values({ attendanceId, label, qty: 1, unitPrice });
-  }
-  refresh();
-}
-
-export async function addCustomDrink(attendanceId: number, formData: FormData) {
-  const label = String(formData.get("label") ?? "").trim();
-  const price = toInt(formData.get("price"));
-  if (!label || price <= 0) return;
-  await addDrink(attendanceId, label, price);
-}
-
-export async function changeQty(itemId: number, delta: number) {
-  await requireAdmin();
-  const [it] = await db.select().from(items).where(eq(items.id, itemId));
-  if (!it) return;
-  const qty = it.qty + delta;
-  if (qty <= 0) await db.delete(items).where(eq(items.id, itemId));
-  else await db.update(items).set({ qty }).where(eq(items.id, itemId));
+  if (field !== "joinedDrinks" && field !== "joinedSnack") return;
+  const [a] = await db.select().from(attendances).where(eq(attendances.id, id));
+  if (!a) return;
+  await db
+    .update(attendances)
+    .set(
+      field === "joinedDrinks"
+        ? { joinedDrinks: !a.joinedDrinks }
+        : { joinedSnack: !a.joinedSnack },
+    )
+    .where(eq(attendances.id, id));
   refresh();
 }
 
@@ -142,13 +115,6 @@ export async function saveAmounts(sessionId: number) {
   refresh();
 }
 
-export async function deleteSession(id: number) {
-  await requireAdmin();
-  await db.delete(sessions).where(eq(sessions.id, id)); // attendances and items cascade
-  revalidatePath("/sessions");
-  redirect("/sessions");
-}
-
 export async function setArchived(id: number, archived: boolean) {
   await requireAdmin();
   await db
@@ -156,4 +122,11 @@ export async function setArchived(id: number, archived: boolean) {
     .set({ status: archived ? "archived" : "active" })
     .where(eq(sessions.id, id));
   refresh();
+}
+
+export async function deleteSession(id: number) {
+  await requireAdmin();
+  await db.delete(sessions).where(eq(sessions.id, id)); // attendances cascade
+  revalidatePath("/sessions");
+  redirect("/sessions");
 }

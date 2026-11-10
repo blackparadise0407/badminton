@@ -39,6 +39,7 @@ export async function createSession(formData: FormData) {
       playerId: p.id,
       startHour,
       endHour,
+      joinedDrinks: formData.get(`drinks_${p.id}`) === "on",
       joinedSnack: formData.get(`snack_${p.id}`) === "on",
     });
   }
@@ -54,6 +55,7 @@ export async function createSession(formData: FormData) {
       shuttlePrice,
       shuttlesUsed: toInt(formData.get("shuttlesUsed")),
       snackTotal: toInt(formData.get("snackTotal")),
+      drinksTotal: toInt(formData.get("drinksTotal")),
     })
     .returning({ id: sessions.id });
 

@@ -4,25 +4,25 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { players } from "@/db/schema";
 import { loadSessionData } from "@/lib/session-data";
-import { DRINK_PRESETS } from "@/lib/drinks";
 import { fmtDate, fmtHour, vnd } from "@/lib/format";
 import { statusOf } from "@/lib/payments";
 import { statusBar, statusBorder } from "@/lib/status-style";
 import { PaymentControls, StatusBadge } from "./payment-controls";
 import {
   addAttendee,
-  addCustomDrink,
-  addDrink,
-  changeQty,
   deleteSession,
   removeAttendance,
   saveAmounts,
   setArchived,
+  toggleShared,
   updateAttendance,
   updateSession,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+const toggleStyle = (on: boolean) =>
+  `btn btn-sm ${on ? "border-court bg-court-tint text-court" : "text-muted"}`;
 
 export default async function SessionDetail({
   params,
@@ -149,7 +149,6 @@ export default async function SessionDetail({
             .filter(([, v]) => v > 0)
             .map(([k, v]) => `${k} ${vnd(v)}`)
             .join(", ");
-          const drinkCount = a.items.reduce((t, it) => t + it.qty, 0);
 
           return (
             <li
@@ -167,7 +166,7 @@ export default async function SessionDetail({
                     )}
                   </div>
                   <div className="text-sm text-muted">
-                    {`${fmtHour(a.startHour)} to ${fmtHour(a.endHour)}, ${l.hours}h${a.joinedSnack ? ", joined snack" : ""}`}
+                    {`${fmtHour(a.startHour)} to ${fmtHour(a.endHour)}, ${l.hours}h`}
                   </div>
                 </div>
                 <div className="text-[19px] font-bold tabular-nums">
@@ -177,86 +176,45 @@ export default async function SessionDetail({
 
               <div className="text-sm text-muted">{parts}</div>
 
+              {(s.drinksTotal > 0 || s.snackTotal > 0) && (
+                <div className="flex flex-wrap gap-2">
+                  {s.drinksTotal > 0 && (
+                    <form
+                      action={toggleShared.bind(null, a.id, "joinedDrinks")}
+                    >
+                      <button
+                        aria-pressed={a.joinedDrinks}
+                        className={toggleStyle(a.joinedDrinks)}
+                      >
+                        {a.joinedDrinks ? "Drinks in" : "No drinks"}
+                      </button>
+                    </form>
+                  )}
+                  {s.snackTotal > 0 && (
+                    <form action={toggleShared.bind(null, a.id, "joinedSnack")}>
+                      <button
+                        aria-pressed={a.joinedSnack}
+                        className={toggleStyle(a.joinedSnack)}
+                      >
+                        {a.joinedSnack ? "Snack in" : "No snack"}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+
               <PaymentControls
                 id={a.id}
                 due={a.amountDue}
                 paid={a.amountPaid}
-                method={a.method}
                 paidAt={a.paidAt}
               />
 
               <details>
                 <summary className="cursor-pointer text-sm text-court">
-                  {drinkCount > 0
-                    ? `Drinks and hours (${drinkCount} drinks)`
-                    : "Drinks and hours"}
+                  Hours and removal
                 </summary>
-                <div className="mt-3 space-y-4">
-                  {a.items.length > 0 && (
-                    <ul className="space-y-2">
-                      {a.items.map((it) => (
-                        <li key={it.id} className="flex items-center gap-2">
-                          <form action={changeQty.bind(null, it.id, -1)}>
-                            <button
-                              className="btn btn-sm w-9 px-0"
-                              aria-label={`Remove one ${it.label}`}
-                            >
-                              −
-                            </button>
-                          </form>
-                          <span className="w-6 text-center tabular-nums">
-                            {it.qty}
-                          </span>
-                          <form action={changeQty.bind(null, it.id, 1)}>
-                            <button
-                              className="btn btn-sm w-9 px-0"
-                              aria-label={`Add one ${it.label}`}
-                            >
-                              +
-                            </button>
-                          </form>
-                          <span className="flex-1">{it.label}</span>
-                          <span className="text-sm text-muted tabular-nums">
-                            {vnd(it.qty * it.unitPrice)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  <div className="flex flex-wrap gap-2">
-                    {DRINK_PRESETS.map((d) => (
-                      <form
-                        key={d.label}
-                        action={addDrink.bind(null, a.id, d.label, d.price)}
-                      >
-                        <button className="btn btn-sm">Add {d.label}</button>
-                      </form>
-                    ))}
-                  </div>
-
-                  <form
-                    action={addCustomDrink.bind(null, a.id)}
-                    className="flex gap-2"
-                  >
-                    <input
-                      name="label"
-                      placeholder="Other drink"
-                      aria-label="Drink name"
-                      className="field min-h-9"
-                    />
-                    <input
-                      name="price"
-                      type="number"
-                      inputMode="numeric"
-                      step={1000}
-                      placeholder="Price"
-                      aria-label="Drink price"
-                      className="field min-h-9 w-28"
-                    />
-                    <button className="btn btn-sm">Add</button>
-                  </form>
-
+                <div className="mt-3 space-y-3">
                   <form
                     action={updateAttendance.bind(null, a.id)}
                     className="grid grid-cols-2 gap-2"
@@ -281,18 +239,8 @@ export default async function SessionDetail({
                         className="field"
                       />
                     </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        name="joinedSnack"
-                        type="checkbox"
-                        defaultChecked={a.joinedSnack}
-                        className="size-5 accent-court"
-                      />
-                      Joined snack
-                    </label>
-                    <button className="btn">Save hours</button>
+                    <button className="btn col-span-2">Save hours</button>
                   </form>
-
                   <form action={removeAttendance.bind(null, a.id)}>
                     <button className="btn btn-sm btn-danger">
                       Remove from session
@@ -415,6 +363,17 @@ export default async function SessionDetail({
                 />
               </label>
               <label>
+                <span className="label">Drinks bill (water bucket)</span>
+                <input
+                  name="drinksTotal"
+                  type="number"
+                  inputMode="numeric"
+                  step={1000}
+                  defaultValue={s.drinksTotal}
+                  className="field"
+                />
+              </label>
+              <label className="col-span-2">
                 <span className="label">Snack bill</span>
                 <input
                   name="snackTotal"

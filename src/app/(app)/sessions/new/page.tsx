@@ -7,7 +7,7 @@ import { createSession } from "../actions";
 export const dynamic = "force-dynamic";
 
 const START_HOUR = 19;
-const COLS = "grid-cols-[1.5rem_1fr_3.5rem_3.5rem_3rem]";
+const COLS = "grid-cols-[1.5rem_1fr_3rem_3rem_2.75rem_2.75rem]";
 
 export default async function NewSession() {
   const [last] = await db
@@ -108,6 +108,18 @@ export default async function NewSession() {
               className="field"
             />
           </label>
+          <label>
+            <span className="label">Drinks bill (water bucket)</span>
+            <input
+              name="drinksTotal"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1000}
+              defaultValue={0}
+              className="field"
+            />
+          </label>
           <label className="col-span-2">
             <span className="label">Snack bill (0 if none)</span>
             <input
@@ -141,6 +153,7 @@ export default async function NewSession() {
             <span>Name</span>
             <span className="text-center">Start</span>
             <span className="text-center">End</span>
+            <span className="text-center">Drinks</span>
             <span className="text-center">Snack</span>
           </div>
           {list.map((p) => (
@@ -178,6 +191,13 @@ export default async function NewSession() {
                 defaultValue={START_HOUR + p.defaultHours}
                 aria-label={`${p.name} end`}
                 className="field px-1 text-center"
+              />
+              <input
+                name={`drinks_${p.id}`}
+                type="checkbox"
+                defaultChecked
+                aria-label={`${p.name} drinks from the bucket`}
+                className="size-5 justify-self-center accent-court"
               />
               <input
                 name={`snack_${p.id}`}

@@ -64,12 +64,11 @@ export async function GET(
           }),
         );
 
-  const drinkText = a.items.map((i) => `${i.qty}× ${i.label}`).join(", ");
   const rounding = l.total - (l.court + l.shuttle + l.drinks + l.snack);
   const lines: [string, number][] = [
     [`Court · ${l.hours}h`, l.court],
     ["Shuttlecocks", l.shuttle],
-    [drinkText ? `Drinks (${drinkText})` : "Drinks", l.drinks],
+    ["Drinks", l.drinks],
     ["Snack", l.snack],
     ["Rounding", rounding],
   ];

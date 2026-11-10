@@ -16,13 +16,11 @@ export function PaymentControls({
   id,
   due,
   paid,
-  method,
   paidAt,
 }: {
   id: number;
   due: number;
   paid: number;
-  method: "bank" | "cash" | null;
   paidAt: Date | null;
 }) {
   if (due <= 0) return null; // the page banner explains that amounts must be saved first
@@ -39,7 +37,7 @@ export function PaymentControls({
       : "";
     return (
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm text-muted">{`Paid ${vnd(paid)} by ${method ?? "bank"}${when}`}</span>
+        <span className="text-sm text-muted">{`Paid ${vnd(paid)} ${when}`}</span>
         <div className="flex gap-2">
           <a href={`/api/card/${id}`} target="_blank" className="btn btn-sm">
             Payment card
@@ -58,11 +56,8 @@ export function PaymentControls({
         <p className="text-sm text-partial">{`Received ${vnd(paid)}, ${vnd(due - paid)} left`}</p>
       )}
       <div className="flex flex-wrap gap-2">
-        <form action={markPaid.bind(null, id, "bank")}>
-          <button className="btn btn-paid">Paid by bank</button>
-        </form>
-        <form action={markPaid.bind(null, id, "cash")}>
-          <button className="btn">Paid cash</button>
+        <form action={markPaid.bind(null, id)}>
+          <button className="btn btn-paid">Paid</button>
         </form>
         {card}
         {s === "partial" && (
@@ -91,15 +86,6 @@ export function PaymentControls({
               className="field"
             />
           </label>
-          <select
-            name="method"
-            defaultValue={method ?? "bank"}
-            aria-label="Method"
-            className="field w-24"
-          >
-            <option value="bank">bank</option>
-            <option value="cash">cash</option>
-          </select>
           <button className="btn">Save</button>
         </form>
       </details>
