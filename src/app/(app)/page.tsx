@@ -14,8 +14,13 @@ export default async function Dashboard() {
   const waiting = rows.filter((r) => r.days < OVERDUE_DAYS);
   const sum = (xs: typeof rows) => xs.reduce((t, r) => t + r.left, 0);
   const people = (n: number) => `${n} ${n === 1 ? "person" : "people"}`;
-  const ago = (d: number) =>
-    d === 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
+  const relativeDay = (d: number) => {
+    if (d === 0) return "today";
+    if (d === 1) return "yesterday";
+    if (d === -1) return "tomorrow";
+    if (d < 0) return `in ${Math.abs(d)} days`;
+    return `${d} days ago`;
+  };
 
   const Row = ({ r }: { r: (typeof rows)[number] }) => (
     <li className="space-y-3 p-4">
@@ -26,7 +31,7 @@ export default async function Dashboard() {
             href={`/sessions/${r.sessionId}`}
             className="text-sm text-muted underline"
           >
-            {`${fmtDate(r.date)}, ${ago(r.days)}${r.paid > 0 ? ", part paid" : ""}`}
+            {`${fmtDate(r.date)}, ${relativeDay(r.days)}${r.paid > 0 ? ", part paid" : ""}`}
           </Link>
         </div>
         <div className="text-[19px] font-bold tabular-nums">{vnd(r.left)}</div>
