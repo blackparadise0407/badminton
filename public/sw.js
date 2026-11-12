@@ -45,7 +45,8 @@ self.addEventListener("fetch", (event) => {
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
     url.pathname === "/login" ||
-    url.pathname.startsWith("/api/") ||
+    (url.pathname.startsWith("/api/") &&
+      !url.pathname.startsWith("/api/app/")) ||
     url.pathname.startsWith("/_next/image")
   ) {
     return;
@@ -79,7 +80,9 @@ self.addEventListener("fetch", (event) => {
         if (
           response.ok &&
           (contentType.includes("text/html") ||
-            contentType.includes("text/x-component"))
+            contentType.includes("text/x-component") ||
+            (url.pathname.startsWith("/api/app/") &&
+              contentType.includes("application/json")))
         ) {
           try {
             const cache = await caches.open(PAGE_CACHE);

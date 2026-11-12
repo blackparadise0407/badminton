@@ -1,20 +1,17 @@
-import { asc, desc } from "drizzle-orm";
-import { db } from "@/db";
-import { players } from "@/db/schema";
+"use client";
+
 import { addPlayer, toggleFlag, setDefaultHours } from "./actions";
 import { OptimisticToggle } from "../optimistic-toggle";
+import { refreshAfter, PageDataState, useApiData } from "../api-data";
+import type { PlayerRecord } from "@/lib/page-data-types";
 
-export const dynamic = "force-dynamic";
-
-export default async function PlayersPage() {
-  const all = await db
-    .select()
-    .from(players)
-    .orderBy(
-      desc(players.isActive),
-      desc(players.isRegular),
-      asc(players.name),
-    );
+export default function PlayersPage() {
+  const { data, error, loading, retry } =
+    useApiData<PlayerRecord[]>("/api/app/players");
+  if (!data) {
+    return <PageDataState loading={loading} error={error} retry={retry} />;
+  }
+  const all = data;
 
   return (
     <div className="space-y-5">
@@ -24,7 +21,10 @@ export default async function PlayersPage() {
         <summary className="cursor-pointer font-medium text-court">
           Add player
         </summary>
-        <form action={addPlayer} className="mt-4 grid grid-cols-2 gap-3">
+        <form
+          action={refreshAfter(addPlayer)}
+          className="mt-4 grid grid-cols-2 gap-3"
+        >
           <label>
             <span className="label">Name</span>
             <input name="name" required className="field" />
@@ -71,7 +71,7 @@ export default async function PlayersPage() {
             </div>
 
             <form
-              action={setDefaultHours.bind(null, p.id)}
+              action={refreshAfter(setDefaultHours.bind(null, p.id))}
               className="flex items-center gap-2"
             >
               <input

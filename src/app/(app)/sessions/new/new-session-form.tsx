@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createSession } from "../actions";
+import { refreshAfter } from "../../api-data";
 
 type P = {
   id: number;
@@ -39,7 +40,7 @@ export function NewSessionForm({
     setOver((o) => ({ ...o, [key]: v }));
 
   return (
-    <form action={createSession} className="space-y-7">
+    <form action={refreshAfter(createSession)} className="space-y-7">
       <div>
         <Link href="/sessions" className="text-sm text-court">
           Back to sessions

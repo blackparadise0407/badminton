@@ -10,6 +10,7 @@ import { statusOf } from "@/lib/payments";
 import { statusChip, statusLabel } from "@/lib/status-style";
 import { vnd } from "@/lib/format";
 import { useToast } from "../../toast-provider";
+import { refreshAfter } from "../../api-data";
 
 export function StatusBadge({ due, paid }: { due: number; paid: number }) {
   const s = statusOf(due, paid);
@@ -25,7 +26,7 @@ export function PaymentControls({
   id: number;
   due: number;
   paid: number;
-  paidAt: Date | null;
+  paidAt: string | null;
 }) {
   const card = (
     <a href={`/api/card/${id}`} target="_blank" className="btn">
@@ -34,24 +35,27 @@ export function PaymentControls({
   );
   const [payment, setPayment] = useOptimistic(
     { paid, paidAt },
-    (_current, next: { paid: number; paidAt: Date | null }) => next,
+    (_current, next: { paid: number; paidAt: string | null }) => next,
   );
   const [pending, startTransition] = useTransition();
   const notify = useToast();
   const currentStatus = statusOf(due, payment.paid);
   const markAsPaid = () =>
-    updatePayment({ paid: due, paidAt: new Date() }, () => markPaid(id));
+    updatePayment(
+      { paid: due, paidAt: new Date().toISOString() },
+      () => markPaid(id),
+    );
   const markAsUnpaid = () =>
     updatePayment({ paid: 0, paidAt: null }, () => markUnpaid(id));
 
   function updatePayment(
-    next: { paid: number; paidAt: Date | null },
+    next: { paid: number; paidAt: string | null },
     action: () => Promise<void>,
   ) {
     startTransition(async () => {
       setPayment(next);
       try {
-        await action();
+        await refreshAfter(action)();
       } catch {
         notify("Could not save payment. Please try again.", "error");
       }
@@ -62,7 +66,7 @@ export function PaymentControls({
 
   if (currentStatus === "paid") {
     const when = payment.paidAt
-      ? ` on ${payment.paidAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Ho_Chi_Minh" })}`
+      ? ` on ${new Date(payment.paidAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Ho_Chi_Minh" })}`
       : "";
     return (
       <div className="space-y-2">

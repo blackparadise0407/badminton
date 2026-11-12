@@ -1,21 +1,18 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { ShareImageActions } from "./share-image-actions";
 
-export default async function ShareSessionImage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ hideStatus?: string; hideDetail?: string }>;
-}) {
-  const { id } = await params;
-  if (!Number.isInteger(Number(id))) notFound();
-
-  const options = await searchParams;
+export default function ShareSessionImage() {
+  const { id } = useParams<{ id: string }>();
+  const options = useSearchParams();
+  if (!Number.isInteger(Number(id))) {
+    return <p role="alert" className="text-unpaid">Invalid session id.</p>;
+  }
   const query = new URLSearchParams();
-  if (options.hideStatus === "on") query.set("hideStatus", "on");
-  if (options.hideDetail === "on") query.set("hideDetail", "on");
+  if (options.get("hideStatus") === "on") query.set("hideStatus", "on");
+  if (options.get("hideDetail") === "on") query.set("hideDetail", "on");
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
   const imageUrl = `/api/export/session/${id}${suffix}`;
 

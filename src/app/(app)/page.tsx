@@ -1,13 +1,18 @@
+"use client";
+
 import Link from "next/link";
-import { getOwing, getUnsavedSessions } from "@/lib/owing";
 import { fmtDate, vnd } from "@/lib/format";
+import type { DashboardData } from "@/lib/page-data-types";
+import { PageDataState, useApiData } from "./api-data";
 import { OwingOverview } from "./owing-overview";
 
-export const dynamic = "force-dynamic";
-
-export default async function Dashboard() {
-  const rows = await getOwing();
-  const unsavedSessions = await getUnsavedSessions();
+export default function Dashboard() {
+  const { data, error, loading, retry } =
+    useApiData<DashboardData>("/api/app/dashboard");
+  if (!data) {
+    return <PageDataState loading={loading} error={error} retry={retry} />;
+  }
+  const { rows, unsavedSessions } = data;
 
   return (
     <div className="space-y-5">

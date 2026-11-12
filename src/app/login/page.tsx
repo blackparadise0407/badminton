@@ -1,4 +1,6 @@
-import { signIn } from "@/auth";
+"use client";
+
+import { signInWithGoogle } from "./actions";
 
 export default function Login() {
   return (
@@ -12,12 +14,7 @@ export default function Login() {
             Sign in to manage sessions and see who still owes.
           </p>
         </div>
-        <form
-          action={async () => {
-            "use server";
-            await signIn("google", { redirectTo: "/" });
-          }}
-        >
+        <form action={signInWithGoogle}>
           <button className="btn btn-primary w-full">
             Sign in with Google
           </button>

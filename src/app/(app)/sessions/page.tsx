@@ -1,34 +1,19 @@
+"use client";
+
 import Link from "next/link";
-import { desc, eq, sql } from "drizzle-orm";
-import { db } from "@/db";
-import { sessions, attendances } from "@/db/schema";
+import { useSearchParams } from "next/navigation";
 import { fmtDate } from "@/lib/format";
+import type { SessionListRow } from "@/lib/page-data-types";
+import { PageDataState, useApiData } from "../api-data";
 
-export const dynamic = "force-dynamic";
-
-export default async function SessionsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ show?: string }>;
-}) {
-  const showArchived = (await searchParams).show === "archived";
-
-  const rows = await db
-    .select({
-      id: sessions.id,
-      date: sessions.date,
-      venue: sessions.venue,
-      count: sql<number>`count(${attendances.id})`.mapWith(Number),
-      unpaid:
-        sql<number>`count(*) filter (where ${attendances.amountDue} = 0 or ${attendances.amountPaid} < ${attendances.amountDue})`.mapWith(
-          Number,
-        ),
-    })
-    .from(sessions)
-    .leftJoin(attendances, eq(attendances.sessionId, sessions.id))
-    .where(eq(sessions.status, showArchived ? "archived" : "active"))
-    .groupBy(sessions.id)
-    .orderBy(desc(sessions.date), desc(sessions.id));
+export default function SessionsPage() {
+  const showArchived = useSearchParams().get("show") === "archived";
+  const path = `/api/app/sessions${showArchived ? "?show=archived" : ""}`;
+  const { data, error, loading, retry } = useApiData<SessionListRow[]>(path);
+  if (!data) {
+    return <PageDataState loading={loading} error={error} retry={retry} />;
+  }
+  const rows = data;
 
   const seg = (on: boolean) =>
     `rounded-md px-4 py-1.5 font-medium ${on ? "bg-court text-white" : "text-muted"}`;

@@ -1,14 +1,14 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { players } from "@/db/schema";
-import { loadSessionData } from "@/lib/session-data";
+import { useParams } from "next/navigation";
 import { fmtDate, fmtHour, vnd } from "@/lib/format";
 import { statusOf } from "@/lib/payments";
 import { statusBar, statusBorder } from "@/lib/status-style";
+import type { SessionDetailData } from "@/lib/page-data-types";
 import { PaymentControls } from "./payment-controls";
 import { OptimisticToggle } from "../../optimistic-toggle";
+import { PageDataState, refreshAfter, useApiData } from "../../api-data";
 import {
   addAttendee,
   deleteSession,
@@ -20,20 +20,19 @@ import {
   updateSession,
 } from "./actions";
 
-export const dynamic = "force-dynamic";
-
-export default async function SessionDetail({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+export default function SessionDetail() {
+  const { id } = useParams<{ id: string }>();
   const sid = Number(id);
-  if (!Number.isInteger(sid)) notFound();
-
-  const data = await loadSessionData(sid);
-  if (!data) notFound();
-  const { session: s, attendees, split } = data;
+  const { data, error, loading, retry } = useApiData<SessionDetailData>(
+    `/api/app/sessions/${id}`,
+  );
+  if (!Number.isInteger(sid)) {
+    return <p role="alert" className="text-unpaid">Invalid session id.</p>;
+  }
+  if (!data) {
+    return <PageDataState loading={loading} error={error} retry={retry} />;
+  }
+  const { session: s, attendees, split, activePlayers } = data;
 
   const line = new Map(split.lines.map((l) => [l.id, l]));
   const unsaved = attendees.some((a) => a.amountDue !== line.get(a.id)!.total);
@@ -45,11 +44,6 @@ export default async function SessionDetail({
     0,
   );
 
-  const activePlayers = await db
-    .select()
-    .from(players)
-    .where(eq(players.isActive, true))
-    .orderBy(asc(players.name));
   const available = activePlayers.filter(
     (p) => !attendees.some((a) => a.playerId === p.id),
   );
@@ -71,7 +65,7 @@ export default async function SessionDetail({
 
       {unsaved && (
         <form
-          action={saveAmounts.bind(null, s.id)}
+          action={refreshAfter(saveAmounts.bind(null, s.id))}
           className="flex items-center justify-between gap-3 rounded-xl bg-partial-tint p-3 text-partial"
         >
           <p className="text-sm">
@@ -211,7 +205,7 @@ export default async function SessionDetail({
                 </summary>
                 <div className="mt-3 space-y-3">
                   <form
-                    action={updateAttendance.bind(null, a.id)}
+                    action={refreshAfter(updateAttendance.bind(null, a.id))}
                     className="grid grid-cols-2 gap-2"
                   >
                     <label>
@@ -236,7 +230,7 @@ export default async function SessionDetail({
                     </label>
                     <button className="btn col-span-2">Save hours</button>
                   </form>
-                  <form action={removeAttendance.bind(null, a.id)}>
+                  <form action={refreshAfter(removeAttendance.bind(null, a.id))}>
                     <button className="btn btn-sm btn-danger">
                       Remove from session
                     </button>
@@ -252,7 +246,10 @@ export default async function SessionDetail({
       </ul>
 
       {available.length > 0 && (
-        <form action={addAttendee.bind(null, s.id)} className="flex gap-2">
+        <form
+          action={refreshAfter(addAttendee.bind(null, s.id))}
+          className="flex gap-2"
+        >
           <select name="playerId" aria-label="Player to add" className="field">
             {available.map((p) => (
               <option key={p.id} value={p.id}>
@@ -302,7 +299,7 @@ export default async function SessionDetail({
               Session numbers
             </summary>
             <form
-              action={updateSession.bind(null, s.id)}
+              action={refreshAfter(updateSession.bind(null, s.id))}
               className="mt-3 grid grid-cols-2 gap-3"
             >
               <label>

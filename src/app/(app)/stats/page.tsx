@@ -1,22 +1,25 @@
-import Link from "next/link";
-import { getLeaderboard, type Period } from "@/lib/stats";
-import { todayVN } from "@/lib/payments";
+"use client";
 
-export const dynamic = "force-dynamic";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import type { Period } from "@/lib/stats";
+import type { StatsData } from "@/lib/page-data-types";
+import { PageDataState, useApiData } from "../api-data";
 
 type By = "hours" | "sessions";
 const num = (n: number) => String(Math.round(n * 10) / 10);
 
-export default async function StatsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ period?: string; by?: string }>;
-}) {
-  const sp = await searchParams;
-  const period: Period = sp.period === "all" ? "all" : "month";
-  const by: By = sp.by === "sessions" ? "sessions" : "hours";
-
-  const { rows, totalSessions } = await getLeaderboard(period);
+export default function StatsPage() {
+  const searchParams = useSearchParams();
+  const period: Period = searchParams.get("period") === "all" ? "all" : "month";
+  const by: By = searchParams.get("by") === "sessions" ? "sessions" : "hours";
+  const { data, error, loading, retry } = useApiData<StatsData>(
+    `/api/app/stats?period=${period}`,
+  );
+  if (!data) {
+    return <PageDataState loading={loading} error={error} retry={retry} />;
+  }
+  const { rows, totalSessions } = data;
   const other: By = by === "hours" ? "sessions" : "hours";
   const sorted = [...rows].sort(
     (a, b) =>
@@ -37,9 +40,7 @@ export default async function StatsPage({
   const seg = (on: boolean) =>
     `rounded-md px-4 py-1.5 font-medium ${on ? "bg-court text-white" : "text-muted"}`;
 
-  const monthLabel = new Date(
-    `${todayVN().slice(0, 7)}-01T00:00:00Z`,
-  ).toLocaleDateString("en-GB", {
+  const monthLabel = new Date(`${data.today.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString("en-GB", {
     month: "long",
     year: "numeric",
     timeZone: "UTC",

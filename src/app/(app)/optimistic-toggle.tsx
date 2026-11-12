@@ -2,6 +2,7 @@
 
 import { useOptimistic, useTransition } from "react";
 import { useToast } from "./toast-provider";
+import { refreshAfter } from "./api-data";
 
 export function OptimisticToggle({
   initialValue,
@@ -36,7 +37,9 @@ export function OptimisticToggle({
       const next = !value;
       setValue(next);
       try {
-        await (next ? (onAction ?? action) : (offAction ?? action))();
+        await refreshAfter(
+          next ? (onAction ?? action) : (offAction ?? action),
+        )();
       } catch {
         notify("Could not save this change. Please try again.", "error");
       }
