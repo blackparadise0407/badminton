@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import {
   markPaid,
   markUnpaid,
@@ -9,6 +9,7 @@ import {
 import { statusOf } from "@/lib/payments";
 import { statusChip, statusLabel } from "@/lib/status-style";
 import { vnd } from "@/lib/format";
+import { useToast } from "../../toast-provider";
 
 export function StatusBadge({ due, paid }: { due: number; paid: number }) {
   const s = statusOf(due, paid);
@@ -36,7 +37,7 @@ export function PaymentControls({
     (_current, next: { paid: number; paidAt: Date | null }) => next,
   );
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState("");
+  const notify = useToast();
   const currentStatus = statusOf(due, payment.paid);
   const markAsPaid = () =>
     updatePayment({ paid: due, paidAt: new Date() }, () => markPaid(id));
@@ -49,11 +50,10 @@ export function PaymentControls({
   ) {
     startTransition(async () => {
       setPayment(next);
-      setError("");
       try {
         await action();
       } catch {
-        setError("Could not save payment. Please try again.");
+        notify("Could not save payment. Please try again.", "error");
       }
     });
   }
@@ -85,11 +85,6 @@ export function PaymentControls({
             </button>
           </div>
         </div>
-        {error && (
-          <p role="alert" className="text-sm text-unpaid">
-            {error}
-          </p>
-        )}
       </div>
     );
   }
@@ -123,11 +118,6 @@ export function PaymentControls({
           </button>
         )}
       </div>
-      {error && (
-        <p role="alert" className="text-sm text-unpaid">
-          {error}
-        </p>
-      )}
       <details>
         <summary className="cursor-pointer text-sm text-court">
           Part payment

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { markPaid } from "@/app/(app)/payment-actions";
 import { OVERDUE_DAYS } from "@/lib/payments";
 import { fmtDate, vnd } from "@/lib/format";
+import { useToast } from "./toast-provider";
 
 type OwingRow = {
   id: number;
@@ -37,16 +38,15 @@ export function OwingOverview({
     (currentRows, id: number) => currentRows.filter((row) => row.id !== id),
   );
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState("");
+  const notify = useToast();
 
   function pay(id: number) {
     startTransition(async () => {
       markOptimisticallyPaid(id);
-      setError("");
       try {
         await markPaid(id);
       } catch {
-        setError("Could not save the payment. The row has been restored.");
+        notify("Could not save the payment. The row has been restored.", "error");
       }
     });
   }
@@ -124,11 +124,6 @@ export function OwingOverview({
         </div>
       </section>
 
-      {error && (
-        <p role="alert" className="rounded-lg bg-unpaid-tint p-3 text-sm text-unpaid">
-          {error}
-        </p>
-      )}
       {section("Overdue", overdue, true)}
       {section("Waiting for payment", waiting, false)}
 

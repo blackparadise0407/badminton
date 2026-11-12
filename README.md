@@ -7,6 +7,8 @@ caches static assets and signed-in pages that have been visited; do not use
 offline caching on a shared or unlocked device because those pages can contain
 session and payment information. Use **Offline data on this device** in the app
 to clear saved pages.
+Session summary images now open in an in-app preview with a return link, plus
+native sharing and download controls where supported.
 
 Next.js retries interrupted navigations and Server Actions after connectivity
 returns while the app remains open. This is not a durable background mutation

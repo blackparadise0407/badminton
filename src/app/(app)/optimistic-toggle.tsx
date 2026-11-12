@@ -1,6 +1,7 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
+import { useToast } from "./toast-provider";
 
 export function OptimisticToggle({
   initialValue,
@@ -28,17 +29,16 @@ export function OptimisticToggle({
     (_current, next: boolean) => next,
   );
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState("");
+  const notify = useToast();
 
   function toggle() {
     startTransition(async () => {
       const next = !value;
       setValue(next);
-      setError("");
       try {
         await (next ? (onAction ?? action) : (offAction ?? action))();
       } catch {
-        setError("Could not save this change. Please try again.");
+        notify("Could not save this change. Please try again.", "error");
       }
     });
   }
@@ -54,11 +54,6 @@ export function OptimisticToggle({
       >
         {value ? onLabel : offLabel}
       </button>
-      {error && (
-        <span role="alert" className="text-xs text-unpaid">
-          {error}
-        </span>
-      )}
     </span>
   );
 }

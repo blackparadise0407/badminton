@@ -271,9 +271,8 @@ export default async function SessionDetail({
               Share summary image
             </summary>
             <form
-              action={`/api/export/session/${s.id}`}
+              action={`/sessions/${s.id}/share`}
               method="get"
-              target="_blank"
               className="mt-3 space-y-3"
             >
               <label className="flex items-center gap-2">
@@ -292,7 +291,7 @@ export default async function SessionDetail({
                 />{" "}
                 Show names and totals only
               </label>
-              <button className="btn btn-primary w-full">Open image</button>
+              <button className="btn btn-primary w-full">Preview image</button>
             </form>
           </details>
         </li>

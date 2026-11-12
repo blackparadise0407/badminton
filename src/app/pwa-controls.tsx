@@ -2,6 +2,7 @@
 
 import { useOffline } from "next/offline";
 import { useEffect, useState } from "react";
+import { useToast } from "./(app)/toast-provider";
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -15,7 +16,7 @@ export function PwaControls() {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIos, setIsIos] = useState(false);
   const [swError, setSwError] = useState<string | null>(null);
-  const [message, setMessage] = useState("");
+  const notify = useToast();
 
   useEffect(() => {
     setIsIos(/iphone|ipad|ipod/i.test(window.navigator.userAgent));
@@ -37,7 +38,30 @@ export function PwaControls() {
     window.addEventListener("beforeinstallprompt", handleInstallPrompt);
     window.addEventListener("appinstalled", handleInstalled);
 
-    if ("serviceWorker" in navigator) {
+    if ("serviceWorker" in navigator && process.env.NODE_ENV !== "production") {
+      void (async () => {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        const appRegistrations = registrations.filter((registration) =>
+          registration.active
+            ? new URL(registration.active.scriptURL).pathname === "/sw.js"
+            : false,
+        );
+        const wasControlled = Boolean(navigator.serviceWorker.controller);
+        const removed = await Promise.all(
+          appRegistrations.map((registration) => registration.unregister()),
+        );
+        await Promise.all(
+          ["badminton-v1-shell", "badminton-v1-pages"].map((name) =>
+            caches.delete(name),
+          ),
+        );
+        if (wasControlled && removed.some(Boolean)) window.location.reload();
+      })().catch((error: unknown) => {
+        const detail =
+          error instanceof Error ? error.message : "Unknown service worker error";
+        setSwError(detail);
+      });
+    } else if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/", updateViaCache: "none" })
         .catch((error: unknown) => {
@@ -64,20 +88,22 @@ export function PwaControls() {
   }
 
   async function clearCachedPages() {
-    if (!("serviceWorker" in navigator)) {
-      setMessage("Service worker support is unavailable.");
+    if (!("caches" in window)) {
+      notify("Offline storage is unavailable.", "info");
       return;
     }
 
-    const registration = await navigator.serviceWorker.ready;
-    const worker = registration.active;
-    if (!worker) {
-      setMessage("Offline storage is not ready yet.");
-      return;
+    try {
+      const cleared = await caches.delete("badminton-v1-pages");
+      notify(
+        cleared
+          ? "Saved pages cleared from this device."
+          : "No saved pages to clear.",
+        "success",
+      );
+    } catch {
+      notify("Could not clear saved pages from this device.", "error");
     }
-
-    worker.postMessage("CLEAR_CACHED_PAGES");
-    setMessage("Saved pages cleared from this device.");
   }
 
   return (
@@ -124,7 +150,6 @@ export function PwaControls() {
         >
           Clear saved pages
         </button>
-        {message && <span role="status" className="ml-2">{message}</span>}
       </details>
     </div>
   );

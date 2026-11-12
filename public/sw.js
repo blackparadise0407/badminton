@@ -35,6 +35,13 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (
+    self.location.hostname === "localhost" ||
+    self.location.hostname === "127.0.0.1"
+  ) {
+    return;
+  }
+
+  if (
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
     url.pathname === "/login" ||
