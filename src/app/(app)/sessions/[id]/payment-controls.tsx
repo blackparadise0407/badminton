@@ -1,3 +1,6 @@
+"use client";
+
+import { useOptimistic, useState, useTransition } from "react";
 import {
   markPaid,
   markUnpaid,
@@ -23,55 +26,128 @@ export function PaymentControls({
   paid: number;
   paidAt: Date | null;
 }) {
-  if (due <= 0) return null; // the page banner explains that amounts must be saved first
-  const s = statusOf(due, paid);
   const card = (
     <a href={`/api/card/${id}`} target="_blank" className="btn">
       Payment card
     </a>
   );
+  const [payment, setPayment] = useOptimistic(
+    { paid, paidAt },
+    (_current, next: { paid: number; paidAt: Date | null }) => next,
+  );
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+  const currentStatus = statusOf(due, payment.paid);
+  const markAsPaid = () =>
+    updatePayment({ paid: due, paidAt: new Date() }, () => markPaid(id));
+  const markAsUnpaid = () =>
+    updatePayment({ paid: 0, paidAt: null }, () => markUnpaid(id));
 
-  if (s === "paid") {
-    const when = paidAt
-      ? ` on ${paidAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Ho_Chi_Minh" })}`
+  function updatePayment(
+    next: { paid: number; paidAt: Date | null },
+    action: () => Promise<void>,
+  ) {
+    startTransition(async () => {
+      setPayment(next);
+      setError("");
+      try {
+        await action();
+      } catch {
+        setError("Could not save payment. Please try again.");
+      }
+    });
+  }
+
+  if (due <= 0) return null;
+
+  if (currentStatus === "paid") {
+    const when = payment.paidAt
+      ? ` on ${payment.paidAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Ho_Chi_Minh" })}`
       : "";
     return (
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm text-muted">{`Paid ${vnd(paid)} ${when}`}</span>
-        <div className="flex gap-2">
-          <a href={`/api/card/${id}`} target="_blank" className="btn btn-sm">
-            Payment card
-          </a>
-          <form action={markUnpaid.bind(null, id)}>
-            <button className="btn btn-sm">Undo</button>
-          </form>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="space-y-1">
+            <span className="chip chip-paid">Paid</span>
+            <div className="text-sm text-muted">{`Paid ${vnd(payment.paid)} ${when}`}</div>
+          </div>
+          <div className="flex gap-2">
+            <a href={`/api/card/${id}`} target="_blank" className="btn btn-sm">
+              Payment card
+            </a>
+            <button
+              type="button"
+              className="btn btn-sm"
+              disabled={pending}
+              onClick={markAsUnpaid}
+            >
+              Undo
+            </button>
+          </div>
         </div>
+        {error && (
+          <p role="alert" className="text-sm text-unpaid">
+            {error}
+          </p>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      {s === "partial" && (
-        <p className="text-sm text-partial">{`Received ${vnd(paid)}, ${vnd(due - paid)} left`}</p>
+      <span className={`chip ${statusChip[currentStatus]}`}>
+        {statusLabel[currentStatus]}
+      </span>
+      {currentStatus === "partial" && (
+        <p className="text-sm text-partial">{`Received ${vnd(payment.paid)}, ${vnd(due - payment.paid)} left`}</p>
       )}
       <div className="flex flex-wrap gap-2">
-        <form action={markPaid.bind(null, id)}>
-          <button className="btn btn-paid">Paid</button>
-        </form>
+        <button
+          type="button"
+          className="btn btn-paid"
+          disabled={pending}
+          onClick={markAsPaid}
+        >
+          {pending ? "Saving..." : "Paid"}
+        </button>
         {card}
-        {s === "partial" && (
-          <form action={markUnpaid.bind(null, id)}>
-            <button className="btn">Undo</button>
-          </form>
+        {currentStatus === "partial" && (
+          <button
+            type="button"
+            className="btn"
+            disabled={pending}
+            onClick={markAsUnpaid}
+          >
+            Undo
+          </button>
         )}
       </div>
+      {error && (
+        <p role="alert" className="text-sm text-unpaid">
+          {error}
+        </p>
+      )}
       <details>
         <summary className="cursor-pointer text-sm text-court">
           Part payment
         </summary>
         <form
-          action={recordPartial.bind(null, id)}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
+            const amount = Math.max(
+              0,
+              Math.round(Number(formData.get("amount")) || 0),
+            );
+            updatePayment(
+              {
+                paid: Math.min(amount, due),
+                paidAt: null,
+              },
+              () => recordPartial(id, formData),
+            );
+          }}
           className="mt-2 flex flex-wrap items-end gap-2"
         >
           <label className="flex-1 basis-32">
@@ -82,11 +158,13 @@ export function PaymentControls({
               inputMode="numeric"
               step={1000}
               min={0}
-              defaultValue={paid || ""}
+              defaultValue={payment.paid || ""}
               className="field"
             />
           </label>
-          <button className="btn">Save</button>
+          <button className="btn" disabled={pending}>
+            {pending ? "Saving..." : "Save"}
+          </button>
         </form>
       </details>
     </div>

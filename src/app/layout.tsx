@@ -12,6 +12,7 @@ const font = Be_Vietnam_Pro({
 export const metadata: Metadata = {
   title: "Badminton",
   description: "Session payments",
+  applicationName: "Badminton",
 };
 export const viewport: Viewport = {
   width: "device-width",

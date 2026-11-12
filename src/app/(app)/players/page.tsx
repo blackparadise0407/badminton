@@ -2,6 +2,7 @@ import { asc, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { players } from "@/db/schema";
 import { addPlayer, toggleFlag, setDefaultHours } from "./actions";
+import { OptimisticToggle } from "../optimistic-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -87,20 +88,22 @@ export default async function PlayersPage() {
               <button className="btn btn-sm">Save</button>
             </form>
 
-            <form action={toggleFlag.bind(null, p.id, "isRegular")}>
-              <button
-                aria-pressed={p.isRegular}
-                className={`btn btn-sm ${p.isRegular ? "border-court bg-court-tint text-court" : ""}`}
-              >
-                {p.isRegular ? "Regular" : "Make regular"}
-              </button>
-            </form>
+            <OptimisticToggle
+              initialValue={p.isRegular}
+              action={toggleFlag.bind(null, p.id, "isRegular")}
+              onLabel="Regular"
+              offLabel="Make regular"
+              className="btn btn-sm"
+              onClassName="border-court bg-court-tint text-court"
+            />
 
-            <form action={toggleFlag.bind(null, p.id, "isActive")}>
-              <button className="btn btn-sm">
-                {p.isActive ? "Deactivate" : "Reactivate"}
-              </button>
-            </form>
+            <OptimisticToggle
+              initialValue={p.isActive}
+              action={toggleFlag.bind(null, p.id, "isActive")}
+              onLabel="Deactivate"
+              offLabel="Reactivate"
+              className="btn btn-sm"
+            />
           </li>
         ))}
         {all.length === 0 && (

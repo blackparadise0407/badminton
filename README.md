@@ -1,5 +1,18 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## PWA and offline behavior
+
+The app can be installed from a supported mobile browser. Its service worker
+caches static assets and signed-in pages that have been visited; do not use
+offline caching on a shared or unlocked device because those pages can contain
+session and payment information. Use **Offline data on this device** in the app
+to clear saved pages.
+
+Next.js retries interrupted navigations and Server Actions after connectivity
+returns while the app remains open. This is not a durable background mutation
+queue: pending changes are not guaranteed to survive closing the tab or app.
+The pages and forms still depend on the server for data and writes.
+
 ## Getting Started
 
 First, run the development server:

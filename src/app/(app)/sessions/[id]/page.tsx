@@ -7,7 +7,8 @@ import { loadSessionData } from "@/lib/session-data";
 import { fmtDate, fmtHour, vnd } from "@/lib/format";
 import { statusOf } from "@/lib/payments";
 import { statusBar, statusBorder } from "@/lib/status-style";
-import { PaymentControls, StatusBadge } from "./payment-controls";
+import { PaymentControls } from "./payment-controls";
+import { OptimisticToggle } from "../../optimistic-toggle";
 import {
   addAttendee,
   deleteSession,
@@ -20,9 +21,6 @@ import {
 } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-const toggleStyle = (on: boolean) =>
-  `btn btn-sm ${on ? "border-court bg-court-tint text-court" : "text-muted"}`;
 
 export default async function SessionDetail({
   params,
@@ -161,9 +159,6 @@ export default async function SessionDetail({
                     <span className="truncate text-[17px] font-medium">
                       {a.name}
                     </span>
-                    {!unsaved && (
-                      <StatusBadge due={a.amountDue} paid={a.amountPaid} />
-                    )}
                   </div>
                   <div className="text-sm text-muted">
                     {`${fmtHour(a.startHour)} to ${fmtHour(a.endHour)}, ${l.hours}h`}
@@ -179,26 +174,26 @@ export default async function SessionDetail({
               {(s.drinksTotal > 0 || s.snackTotal > 0) && (
                 <div className="flex flex-wrap gap-2">
                   {s.drinksTotal > 0 && (
-                    <form
+                    <OptimisticToggle
+                      initialValue={a.joinedDrinks}
                       action={toggleShared.bind(null, a.id, "joinedDrinks")}
-                    >
-                      <button
-                        aria-pressed={a.joinedDrinks}
-                        className={toggleStyle(a.joinedDrinks)}
-                      >
-                        {a.joinedDrinks ? "Drinks in" : "No drinks"}
-                      </button>
-                    </form>
+                      onLabel="Drinks in"
+                      offLabel="No drinks"
+                      className="btn btn-sm"
+                      onClassName="border-court bg-court-tint text-court"
+                      offClassName="text-muted"
+                    />
                   )}
                   {s.snackTotal > 0 && (
-                    <form action={toggleShared.bind(null, a.id, "joinedSnack")}>
-                      <button
-                        aria-pressed={a.joinedSnack}
-                        className={toggleStyle(a.joinedSnack)}
-                      >
-                        {a.joinedSnack ? "Snack in" : "No snack"}
-                      </button>
-                    </form>
+                    <OptimisticToggle
+                      initialValue={a.joinedSnack}
+                      action={toggleShared.bind(null, a.id, "joinedSnack")}
+                      onLabel="Snack in"
+                      offLabel="No snack"
+                      className="btn btn-sm"
+                      onClassName="border-court bg-court-tint text-court"
+                      offClassName="text-muted"
+                    />
                   )}
                 </div>
               )}
@@ -392,10 +387,7 @@ export default async function SessionDetail({
         </li>
 
         <li className="p-4">
-          <form
-            action={setArchived.bind(null, s.id, s.status !== "archived")}
-            className="flex flex-wrap items-center justify-between gap-3"
-          >
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm text-muted">
               {s.status === "archived"
                 ? "This session is archived."
@@ -403,10 +395,20 @@ export default async function SessionDetail({
                   ? `${vnd(outstanding)} is still outstanding. It stays on the dashboard after archiving.`
                   : "Everything is collected."}
             </span>
-            <button className="btn">
-              {s.status === "archived" ? "Unarchive" : "Archive session"}
-            </button>
-          </form>
+            <OptimisticToggle
+              initialValue={s.status === "archived"}
+              action={setArchived.bind(
+                null,
+                s.id,
+                s.status !== "archived",
+              )}
+              onAction={setArchived.bind(null, s.id, true)}
+              offAction={setArchived.bind(null, s.id, false)}
+              onLabel="Unarchive"
+              offLabel="Archive session"
+              className="btn"
+            />
+          </div>
         </li>
 
         <li className="p-4">
