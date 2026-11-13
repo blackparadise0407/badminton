@@ -47,14 +47,20 @@ export function OwingOverview({
     setVisibleRows(rows);
   }, [rows]);
 
-  function pay(id: number) {
+  function pay(id: number, sessionId: number) {
     const previous = visibleRows;
     setVisibleRows((currentRows) =>
       currentRows.filter((row) => row.id !== id),
     );
     startTransition(async () => {
       try {
-        await refreshAfter(markPaid)(id);
+        await refreshAfter(markPaid, [
+          "/api/app/dashboard",
+          "/api/app/sessions",
+          "/api/app/sessions?*",
+          `/api/app/sessions/${sessionId}`,
+          "/api/app/stats*",
+        ])(id);
       } catch {
         setVisibleRows(previous);
         notify("Could not save the payment. The row has been restored.", "error");
@@ -106,7 +112,7 @@ export function OwingOverview({
                 type="button"
                 className="btn btn-paid"
                 disabled={pending}
-                onClick={() => pay(row.id)}
+                onClick={() => pay(row.id, row.sessionId)}
               >
                 {t(pending ? "Saving..." : "Paid")}
               </button>

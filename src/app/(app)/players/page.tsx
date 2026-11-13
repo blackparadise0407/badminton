@@ -8,12 +8,33 @@ import { useI18n } from "../../i18n-provider";
 
 export default function PlayersPage() {
   const { t } = useI18n();
-  const { data, error, loading, retry } =
+  const { data, error, loading, retry, updateData } =
     useApiData<PlayerRecord[]>("/api/app/players");
   if (!data) {
     return <PageDataState loading={loading} error={error} retry={retry} />;
   }
   const all = data;
+  const updatePlayer = (
+    id: number,
+    field: "isRegular" | "isActive",
+    value: boolean,
+  ) => {
+    updateData((players) =>
+      players
+        .map((player) => {
+          if (player.id !== id) return player;
+          return field === "isRegular"
+            ? { ...player, isRegular: value }
+            : { ...player, isActive: value };
+        })
+        .sort(
+          (a, b) =>
+            Number(b.isActive) - Number(a.isActive) ||
+            Number(b.isRegular) - Number(a.isRegular) ||
+            a.name.localeCompare(b.name),
+        ),
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -95,6 +116,10 @@ export default function PlayersPage() {
             <OptimisticToggle
               initialValue={p.isRegular}
               action={setPlayerFlag.bind(null, p.id, "isRegular")}
+              onOptimisticChange={(value) =>
+                updatePlayer(p.id, "isRegular", value)
+              }
+              refreshPaths={["/api/app/new-session"]}
               onLabel={t("Regular")}
               offLabel={t("Make regular")}
               className="btn btn-sm"
@@ -104,6 +129,14 @@ export default function PlayersPage() {
             <OptimisticToggle
               initialValue={p.isActive}
               action={setPlayerFlag.bind(null, p.id, "isActive")}
+              onOptimisticChange={(value) =>
+                updatePlayer(p.id, "isActive", value)
+              }
+              refreshPaths={[
+                "/api/app/new-session",
+                "/api/app/sessions/*",
+                "/api/app/stats*",
+              ]}
               onLabel={t("Deactivate")}
               offLabel={t("Reactivate")}
               className="btn btn-sm"

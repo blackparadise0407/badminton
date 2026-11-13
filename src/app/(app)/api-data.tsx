@@ -9,12 +9,35 @@ const DATA_CACHE_MAX_ENTRIES = 50;
 
 const apiDataCache = new Map<string, { data: unknown; cachedAt: number }>();
 
+function matchesPath(path: string, patterns: string[]) {
+  return patterns.some((pattern) =>
+    pattern.endsWith("*")
+      ? path.startsWith(pattern.slice(0, -1))
+      : path === pattern,
+  );
+}
+
 function cacheApiData(path: string, data: unknown) {
   apiDataCache.set(path, { data, cachedAt: Date.now() });
   if (apiDataCache.size > DATA_CACHE_MAX_ENTRIES) {
     const oldestPath = apiDataCache.keys().next().value;
     if (oldestPath !== undefined) apiDataCache.delete(oldestPath);
   }
+}
+
+function invalidateApiData(paths?: string[]) {
+  if (!paths) {
+    apiDataCache.clear();
+  } else {
+    for (const path of apiDataCache.keys()) {
+      if (matchesPath(path, paths)) apiDataCache.delete(path);
+    }
+  }
+  window.dispatchEvent(
+    new CustomEvent(DATA_CHANGED_EVENT, {
+      detail: { paths: paths ?? null },
+    }),
+  );
 }
 
 export function useApiData<T>(path: string) {
@@ -39,7 +62,12 @@ export function useApiData<T>(path: string) {
       return () => controller.abort();
     }
 
-    setResult({ path, data: null, error: null, loading: true });
+    setResult((current) => ({
+      path,
+      data: current.path === path ? current.data : null,
+      error: null,
+      loading: true,
+    }));
 
     fetch(path, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
@@ -73,17 +101,26 @@ export function useApiData<T>(path: string) {
   }, [path, revision]);
 
   useEffect(() => {
-    const reload = () => {
-      apiDataCache.clear();
+    const reload = (event: Event) => {
+      const { paths } = (
+        event as CustomEvent<{ paths: string[] | null }>
+      ).detail;
+      if (paths && !matchesPath(path, paths)) return;
       setRevision((value) => value + 1);
     };
     window.addEventListener(DATA_CHANGED_EVENT, reload);
     return () => window.removeEventListener(DATA_CHANGED_EVENT, reload);
-  }, []);
+  }, [path]);
 
   const retry = () => {
     apiDataCache.delete(path);
     setRevision((value) => value + 1);
+  };
+  const updateData = (update: (data: T) => T) => {
+    if (result.path !== path || result.data === null) return;
+    const data = update(result.data);
+    cacheApiData(path, data);
+    setResult({ path, data, error: null, loading: false });
   };
 
   if (result.path !== path) {
@@ -92,21 +129,24 @@ export function useApiData<T>(path: string) {
       error: null,
       loading: true,
       retry,
+      updateData,
     };
   }
 
   return {
     ...result,
     retry,
+    updateData,
   };
 }
 
 export function refreshAfter<TArgs extends unknown[], TResult>(
   action: (...args: TArgs) => Promise<TResult>,
+  paths?: string[],
 ): (...args: TArgs) => Promise<TResult> {
   return async (...args) => {
     const result = await action(...args);
-    window.dispatchEvent(new Event(DATA_CHANGED_EVENT));
+    invalidateApiData(paths);
     return result;
   };
 }

@@ -24,11 +24,15 @@ export function PaymentControls({
   due,
   paid,
   paidAt,
+  onPaymentChange,
+  refreshPaths,
 }: {
   id: number;
   due: number;
   paid: number;
   paidAt: string | null;
+  onPaymentChange: (payment: { paid: number; paidAt: string | null }) => void;
+  refreshPaths: string[];
 }) {
   const { language, t } = useI18n();
   const money = (amount: number) => vnd(amount, language);
@@ -59,11 +63,13 @@ export function PaymentControls({
   ) {
     const previous = payment;
     setPayment(next);
+    onPaymentChange(next);
     startTransition(async () => {
       try {
-        await refreshAfter(action)();
+        await refreshAfter(action, refreshPaths)();
       } catch {
         setPayment(previous);
+        onPaymentChange(previous);
         notify("Could not save payment. Please try again.", "error");
       }
     });

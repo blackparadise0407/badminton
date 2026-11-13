@@ -7,6 +7,8 @@ import { refreshAfter } from "./api-data";
 export function OptimisticToggle({
   initialValue,
   action,
+  onOptimisticChange,
+  refreshPaths,
   onLabel,
   offLabel,
   className,
@@ -15,6 +17,8 @@ export function OptimisticToggle({
 }: {
   initialValue: boolean;
   action: (next: boolean) => Promise<void>;
+  onOptimisticChange?: (next: boolean) => void;
+  refreshPaths?: string[];
   onLabel: string;
   offLabel: string;
   className: string;
@@ -33,11 +37,13 @@ export function OptimisticToggle({
     const previous = value;
     const next = !previous;
     setValue(next);
+    onOptimisticChange?.(next);
     startTransition(async () => {
       try {
-        await refreshAfter(action)(next);
+        await refreshAfter(action, refreshPaths)(next);
       } catch {
         setValue(previous);
+        onOptimisticChange?.(previous);
         notify("Could not save this change. Please try again.", "error");
       }
     });

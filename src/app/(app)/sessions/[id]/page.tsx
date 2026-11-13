@@ -6,6 +6,7 @@ import { fmtDate, fmtHour, vnd } from "@/lib/format";
 import { statusOf } from "@/lib/payments";
 import { statusBar, statusBorder } from "@/lib/status-style";
 import type { SessionDetailData } from "@/lib/page-data-types";
+import { calculateSplit } from "@/lib/split";
 import { PaymentControls } from "./payment-controls";
 import { OptimisticToggle } from "../../optimistic-toggle";
 import { PageDataState, refreshAfter, useApiData } from "../../api-data";
@@ -26,9 +27,8 @@ export default function SessionDetail() {
   const money = (amount: number) => vnd(amount, language);
   const { id } = useParams<{ id: string }>();
   const sid = Number(id);
-  const { data, error, loading, retry } = useApiData<SessionDetailData>(
-    `/api/app/sessions/${id}`,
-  );
+  const { data, error, loading, retry, updateData } =
+    useApiData<SessionDetailData>(`/api/app/sessions/${id}`);
   if (!Number.isInteger(sid)) {
     return (
       <p role="alert" className="text-unpaid">
@@ -54,6 +54,54 @@ export default function SessionDetail() {
   const available = activePlayers.filter(
     (p) => !attendees.some((a) => a.playerId === p.id),
   );
+  const paymentRefreshPaths = [
+    "/api/app/dashboard",
+    "/api/app/sessions",
+    "/api/app/sessions?*",
+    `/api/app/sessions/${s.id}`,
+    "/api/app/stats*",
+  ];
+  const archiveRefreshPaths = [
+    "/api/app/dashboard",
+    "/api/app/sessions",
+    "/api/app/sessions?*",
+    "/api/app/stats*",
+  ];
+  const updateSharedItem = (
+    attendanceId: number,
+    field: "joinedDrinks" | "joinedSnack",
+    value: boolean,
+  ) => {
+    updateData((current) => {
+      const nextAttendees = current.attendees.map((attendee) =>
+        attendee.id === attendanceId
+          ? { ...attendee, [field]: value }
+          : attendee,
+      );
+      return {
+        ...current,
+        attendees: nextAttendees,
+        split: calculateSplit(current.session, nextAttendees),
+      };
+    });
+  };
+  const updatePayment = (
+    attendanceId: number,
+    payment: { paid: number; paidAt: string | null },
+  ) => {
+    updateData((current) => ({
+      ...current,
+      attendees: current.attendees.map((attendee) =>
+        attendee.id === attendanceId
+          ? {
+              ...attendee,
+              amountPaid: payment.paid,
+              paidAt: payment.paidAt,
+            }
+          : attendee,
+      ),
+    }));
+  };
 
   return (
     <div className="space-y-4">
@@ -192,6 +240,10 @@ export default function SessionDetail() {
                     <OptimisticToggle
                       initialValue={a.joinedDrinks}
                       action={setShared.bind(null, a.id, "joinedDrinks")}
+                      onOptimisticChange={(value) =>
+                        updateSharedItem(a.id, "joinedDrinks", value)
+                      }
+                      refreshPaths={["/api/app/stats*"]}
                       onLabel={t("Drinks in")}
                       offLabel={t("No drinks")}
                       className="btn btn-sm"
@@ -203,6 +255,10 @@ export default function SessionDetail() {
                     <OptimisticToggle
                       initialValue={a.joinedSnack}
                       action={setShared.bind(null, a.id, "joinedSnack")}
+                      onOptimisticChange={(value) =>
+                        updateSharedItem(a.id, "joinedSnack", value)
+                      }
+                      refreshPaths={["/api/app/stats*"]}
                       onLabel={t("Snack in")}
                       offLabel={t("No snack")}
                       className="btn btn-sm"
@@ -218,6 +274,8 @@ export default function SessionDetail() {
                 due={a.amountDue}
                 paid={a.amountPaid}
                 paidAt={a.paidAt}
+                onPaymentChange={(payment) => updatePayment(a.id, payment)}
+                refreshPaths={paymentRefreshPaths}
               />
 
               <details>
@@ -424,6 +482,16 @@ export default function SessionDetail() {
             <OptimisticToggle
               initialValue={s.status === "archived"}
               action={setArchived.bind(null, s.id)}
+              onOptimisticChange={(archived) =>
+                updateData((current) => ({
+                  ...current,
+                  session: {
+                    ...current.session,
+                    status: archived ? "archived" : "active",
+                  },
+                }))
+              }
+              refreshPaths={archiveRefreshPaths}
               onLabel={t("Unarchive")}
               offLabel={t("Archive session")}
               className="btn"
