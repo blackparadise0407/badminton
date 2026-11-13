@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -23,18 +22,28 @@ export async function addPlayer(formData: FormData) {
     defaultHours: hours,
     isRegular: formData.get("isRegular") === "on",
   });
-  revalidatePath("/players");
 }
 
-export async function toggleFlag(id: number, field: "isRegular" | "isActive") {
+export async function setPlayerFlag(
+  id: number,
+  field: "isRegular" | "isActive",
+  value: boolean,
+) {
   await requireAdmin();
-  const [p] = await db.select().from(players).where(eq(players.id, id));
-  if (!p) return;
-  await db
+  if (
+    !Number.isInteger(id) ||
+    (field !== "isRegular" && field !== "isActive") ||
+    typeof value !== "boolean"
+  ) {
+    throw new Error("Invalid player flag");
+  }
+  const values = field === "isRegular" ? { isRegular: value } : { isActive: value };
+  const [updated] = await db
     .update(players)
-    .set({ [field]: !p[field] })
-    .where(eq(players.id, id));
-  revalidatePath("/players");
+    .set(values)
+    .where(eq(players.id, id))
+    .returning({ id: players.id });
+  if (!updated) throw new Error("Player not found");
 }
 
 export async function setDefaultHours(id: number, formData: FormData) {
@@ -45,5 +54,4 @@ export async function setDefaultHours(id: number, formData: FormData) {
     .update(players)
     .set({ defaultHours: hours })
     .where(eq(players.id, id));
-  revalidatePath("/players");
 }

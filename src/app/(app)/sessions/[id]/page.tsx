@@ -15,8 +15,8 @@ import {
   deleteSession,
   removeAttendance,
   saveAmounts,
+  setShared,
   setArchived,
-  toggleShared,
   updateAttendance,
   updateSession,
 } from "./actions";
@@ -191,7 +191,7 @@ export default function SessionDetail() {
                   {s.drinksTotal > 0 && (
                     <OptimisticToggle
                       initialValue={a.joinedDrinks}
-                      action={toggleShared.bind(null, a.id, "joinedDrinks")}
+                      action={setShared.bind(null, a.id, "joinedDrinks")}
                       onLabel={t("Drinks in")}
                       offLabel={t("No drinks")}
                       className="btn btn-sm"
@@ -202,7 +202,7 @@ export default function SessionDetail() {
                   {s.snackTotal > 0 && (
                     <OptimisticToggle
                       initialValue={a.joinedSnack}
-                      action={toggleShared.bind(null, a.id, "joinedSnack")}
+                      action={setShared.bind(null, a.id, "joinedSnack")}
                       onLabel={t("Snack in")}
                       offLabel={t("No snack")}
                       className="btn btn-sm"
@@ -423,13 +423,7 @@ export default function SessionDetail() {
             </span>
             <OptimisticToggle
               initialValue={s.status === "archived"}
-              action={setArchived.bind(
-                null,
-                s.id,
-                s.status !== "archived",
-              )}
-              onAction={setArchived.bind(null, s.id, true)}
-              offAction={setArchived.bind(null, s.id, false)}
+              action={setArchived.bind(null, s.id)}
               onLabel={t("Unarchive")}
               offLabel={t("Archive session")}
               className="btn"

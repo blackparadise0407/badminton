@@ -1,14 +1,12 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useToast } from "./toast-provider";
 import { refreshAfter } from "./api-data";
 
 export function OptimisticToggle({
   initialValue,
   action,
-  onAction,
-  offAction,
   onLabel,
   offLabel,
   className,
@@ -16,31 +14,30 @@ export function OptimisticToggle({
   offClassName = "",
 }: {
   initialValue: boolean;
-  action: () => Promise<void>;
-  onAction?: () => Promise<void>;
-  offAction?: () => Promise<void>;
+  action: (next: boolean) => Promise<void>;
   onLabel: string;
   offLabel: string;
   className: string;
   onClassName?: string;
   offClassName?: string;
 }) {
-  const [value, setValue] = useOptimistic(
-    initialValue,
-    (_current, next: boolean) => next,
-  );
+  const [value, setValue] = useState(initialValue);
   const [pending, startTransition] = useTransition();
   const notify = useToast();
 
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
   function toggle() {
+    const previous = value;
+    const next = !previous;
+    setValue(next);
     startTransition(async () => {
-      const next = !value;
-      setValue(next);
       try {
-        await refreshAfter(
-          next ? (onAction ?? action) : (offAction ?? action),
-        )();
+        await refreshAfter(action)(next);
       } catch {
+        setValue(previous);
         notify("Could not save this change. Please try again.", "error");
       }
     });

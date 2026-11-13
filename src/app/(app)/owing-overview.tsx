@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useOptimistic, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { markPaid } from "@/app/(app)/payment-actions";
 import { OVERDUE_DAYS } from "@/lib/payments";
 import { fmtDate, vnd } from "@/lib/format";
+import { refreshAfter } from "./api-data";
 import { useToast } from "./toast-provider";
 import { useI18n } from "../i18n-provider";
 
@@ -37,20 +38,25 @@ export function OwingOverview({
   rows: OwingRow[];
   hasUnsavedSessions: boolean;
 }) {
-  const [visibleRows, markOptimisticallyPaid] = useOptimistic(
-    rows,
-    (currentRows, id: number) => currentRows.filter((row) => row.id !== id),
-  );
+  const [visibleRows, setVisibleRows] = useState(rows);
   const [pending, startTransition] = useTransition();
   const notify = useToast();
   const { language, t } = useI18n();
 
+  useEffect(() => {
+    setVisibleRows(rows);
+  }, [rows]);
+
   function pay(id: number) {
+    const previous = visibleRows;
+    setVisibleRows((currentRows) =>
+      currentRows.filter((row) => row.id !== id),
+    );
     startTransition(async () => {
-      markOptimisticallyPaid(id);
       try {
-        await markPaid(id);
+        await refreshAfter(markPaid)(id);
       } catch {
+        setVisibleRows(previous);
         notify("Could not save the payment. The row has been restored.", "error");
       }
     });

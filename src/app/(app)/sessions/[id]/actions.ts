@@ -15,12 +15,6 @@ const toInt = (v: FormDataEntryValue | null) => {
   const n = Math.round(Number(v));
   return Number.isFinite(n) && n >= 0 ? n : 0;
 };
-const refresh = () => {
-  revalidatePath("/");
-  revalidatePath("/sessions/[id]", "page");
-  revalidatePath("/sessions");
-};
-
 export async function updateSession(id: number, formData: FormData) {
   await requireAdmin();
   const courtRatePerHour = toInt(formData.get("courtRatePerHour"));
@@ -37,7 +31,6 @@ export async function updateSession(id: number, formData: FormData) {
       snackTotal: toInt(formData.get("snackTotal")),
     })
     .where(eq(sessions.id, id));
-  refresh();
 }
 
 export async function updateAttendance(id: number, formData: FormData) {
@@ -55,13 +48,11 @@ export async function updateAttendance(id: number, formData: FormData) {
     .update(attendances)
     .set({ startHour, endHour })
     .where(eq(attendances.id, id));
-  refresh();
 }
 
 export async function removeAttendance(id: number) {
   await requireAdmin();
   await db.delete(attendances).where(eq(attendances.id, id));
-  refresh();
 }
 
 export async function addAttendee(sessionId: number, formData: FormData) {
@@ -88,27 +79,32 @@ export async function addAttendee(sessionId: number, formData: FormData) {
     .insert(attendances)
     .values({ sessionId, playerId, startHour, endHour })
     .onConflictDoNothing();
-  refresh();
 }
 
 // Tap on a player row: in or out of the drinks bill / the snack bill
-export async function toggleShared(
+export async function setShared(
   id: number,
   field: "joinedDrinks" | "joinedSnack",
+  value: boolean,
 ) {
   await requireAdmin();
-  if (field !== "joinedDrinks" && field !== "joinedSnack") return;
-  const [a] = await db.select().from(attendances).where(eq(attendances.id, id));
-  if (!a) return;
-  await db
+  if (
+    !Number.isInteger(id) ||
+    (field !== "joinedDrinks" && field !== "joinedSnack") ||
+    typeof value !== "boolean"
+  ) {
+    throw new Error("Invalid shared-item setting");
+  }
+  const values =
+    field === "joinedDrinks"
+      ? { joinedDrinks: value }
+      : { joinedSnack: value };
+  const [updated] = await db
     .update(attendances)
-    .set(
-      field === "joinedDrinks"
-        ? { joinedDrinks: !a.joinedDrinks }
-        : { joinedSnack: !a.joinedSnack },
-    )
-    .where(eq(attendances.id, id));
-  refresh();
+    .set(values)
+    .where(eq(attendances.id, id))
+    .returning({ id: attendances.id });
+  if (!updated) throw new Error("Attendance not found");
 }
 
 export async function saveAmounts(sessionId: number) {
@@ -121,7 +117,6 @@ export async function saveAmounts(sessionId: number) {
       .set({ amountDue: line.total })
       .where(eq(attendances.id, line.id));
   }
-  refresh();
 }
 
 export async function setArchived(id: number, archived: boolean) {
@@ -130,7 +125,6 @@ export async function setArchived(id: number, archived: boolean) {
     .update(sessions)
     .set({ status: archived ? "archived" : "active" })
     .where(eq(sessions.id, id));
-  refresh();
 }
 
 export async function deleteSession(id: number) {

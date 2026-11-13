@@ -1,6 +1,6 @@
 "use client";
 
-import { addPlayer, toggleFlag, setDefaultHours } from "./actions";
+import { addPlayer, setPlayerFlag, setDefaultHours } from "./actions";
 import { OptimisticToggle } from "../optimistic-toggle";
 import { refreshAfter, PageDataState, useApiData } from "../api-data";
 import type { PlayerRecord } from "@/lib/page-data-types";
@@ -94,7 +94,7 @@ export default function PlayersPage() {
 
             <OptimisticToggle
               initialValue={p.isRegular}
-              action={toggleFlag.bind(null, p.id, "isRegular")}
+              action={setPlayerFlag.bind(null, p.id, "isRegular")}
               onLabel={t("Regular")}
               offLabel={t("Make regular")}
               className="btn btn-sm"
@@ -103,7 +103,7 @@ export default function PlayersPage() {
 
             <OptimisticToggle
               initialValue={p.isActive}
-              action={toggleFlag.bind(null, p.id, "isActive")}
+              action={setPlayerFlag.bind(null, p.id, "isActive")}
               onLabel={t("Deactivate")}
               offLabel={t("Reactivate")}
               className="btn btn-sm"

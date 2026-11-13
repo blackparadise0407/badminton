@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   markPaid,
   markUnpaid,
@@ -37,10 +37,7 @@ export function PaymentControls({
       {t("Payment card")}
     </a>
   );
-  const [payment, setPayment] = useOptimistic(
-    { paid, paidAt },
-    (_current, next: { paid: number; paidAt: string | null }) => next,
-  );
+  const [payment, setPayment] = useState({ paid, paidAt });
   const [pending, startTransition] = useTransition();
   const notify = useToast();
   const currentStatus = statusOf(due, payment.paid);
@@ -52,15 +49,21 @@ export function PaymentControls({
   const markAsUnpaid = () =>
     updatePayment({ paid: 0, paidAt: null }, () => markUnpaid(id));
 
+  useEffect(() => {
+    setPayment({ paid, paidAt });
+  }, [paid, paidAt]);
+
   function updatePayment(
     next: { paid: number; paidAt: string | null },
     action: () => Promise<void>,
   ) {
+    const previous = payment;
+    setPayment(next);
     startTransition(async () => {
-      setPayment(next);
       try {
         await refreshAfter(action)();
       } catch {
+        setPayment(previous);
         notify("Could not save payment. Please try again.", "error");
       }
     });

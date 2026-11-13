@@ -1,7 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { attendances } from "@/db/schema";
@@ -9,11 +8,6 @@ import { attendances } from "@/db/schema";
 async function requireAdmin() {
   if (!(await auth())) throw new Error("Unauthorized");
 }
-const refresh = () => {
-  revalidatePath("/");
-  revalidatePath("/sessions/[id]", "page");
-};
-
 async function getSaved(id: number) {
   const [a] = await db.select().from(attendances).where(eq(attendances.id, id));
   if (!a) throw new Error("Not found");
@@ -23,15 +17,18 @@ async function getSaved(id: number) {
 
 export async function markPaid(id: number) {
   await requireAdmin();
-  const a = await getSaved(id);
-  await db
+  const [updated] = await db
     .update(attendances)
     .set({
-      amountPaid: a.amountDue,
+      amountPaid: sql`${attendances.amountDue}`,
       paidAt: new Date(),
     })
-    .where(eq(attendances.id, id));
-  refresh();
+    .where(and(eq(attendances.id, id), gt(attendances.amountDue, 0)))
+    .returning({ id: attendances.id });
+  if (!updated) {
+    await getSaved(id);
+    throw new Error("Could not save the payment.");
+  }
 }
 
 export async function markUnpaid(id: number) {
@@ -40,7 +37,6 @@ export async function markUnpaid(id: number) {
     .update(attendances)
     .set({ amountPaid: 0, paidAt: null })
     .where(eq(attendances.id, id));
-  refresh();
 }
 
 // "total received so far", not "add this much"; entering it again corrects mistakes
@@ -56,5 +52,4 @@ export async function recordPartial(id: number, formData: FormData) {
     .update(attendances)
     .set({ amountPaid: amount, paidAt: null })
     .where(eq(attendances.id, id));
-  refresh();
 }

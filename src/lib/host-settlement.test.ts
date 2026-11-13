@@ -48,13 +48,13 @@ describe("summarizeHostSettlement", () => {
       date: "2026-11-14",
       session,
       attendees: [
-        attendee({ id: 1, amountPaid: 250000 }),
-        attendee({ id: 2, amountDue: 200000, amountPaid: 0 }),
+        attendee({ id: 1, amountDue: 100000, amountPaid: 150000 }),
+        attendee({ id: 2, amountDue: 100000, amountPaid: 0 }),
       ],
     });
 
-    expect(result.unpaid).toBe(200000);
-    expect(result.balance).toBe(-50000);
+    expect(result.unpaid).toBe(100000);
+    expect(result.balance).toBe(50000);
     expect(result.needsSave).toBe(false);
   });
 });
