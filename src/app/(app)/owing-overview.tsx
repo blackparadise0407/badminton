@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { markPaid } from "@/app/(app)/payment-actions";
 import { OVERDUE_DAYS } from "@/lib/payments";
 import { fmtDate, vnd } from "@/lib/format";
@@ -38,34 +38,51 @@ export function OwingOverview({
   rows: OwingRow[];
   hasUnsavedSessions: boolean;
 }) {
-  const [visibleRows, setVisibleRows] = useState(rows);
-  const [pending, startTransition] = useTransition();
+  const [hiddenRows, setHiddenRows] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [pendingRows, setPendingRows] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const pendingRef = useRef(new Set<number>());
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
   const notify = useToast();
   const { language, t } = useI18n();
+  const visibleRows = rows.filter((row) => !hiddenRows.has(row.id));
 
   useEffect(() => {
-    setVisibleRows(rows);
+    setHiddenRows((current) => {
+      const next = new Set(
+        [...current].filter((id) => rows.some((row) => row.id === id)),
+      );
+      return next.size === current.size ? current : next;
+    });
   }, [rows]);
 
-  function pay(id: number, sessionId: number) {
-    const previous = visibleRows;
-    setVisibleRows((currentRows) =>
-      currentRows.filter((row) => row.id !== id),
-    );
-    startTransition(async () => {
-      try {
-        await refreshAfter(markPaid, [
-          "/api/app/dashboard",
-          "/api/app/sessions",
-          "/api/app/sessions?*",
-          `/api/app/sessions/${sessionId}`,
-          "/api/app/stats*",
-        ])(id);
-      } catch {
-        setVisibleRows(previous);
-        notify("Could not save the payment. The row has been restored.", "error");
-      }
-    });
+  async function pay(id: number, sessionId: number) {
+    if (pendingRef.current.has(id)) return;
+    pendingRef.current.add(id);
+    setPendingRows(new Set(pendingRef.current));
+
+    try {
+      await refreshAfter(markPaid, [
+        "/api/app/dashboard",
+        "/api/app/sessions",
+        "/api/app/sessions?*",
+        `/api/app/sessions/${sessionId}`,
+        "/api/app/stats*",
+      ])(id);
+      setHiddenRows((current) => {
+        if (!rowsRef.current.some((row) => row.id === id)) return current;
+        return new Set(current).add(id);
+      });
+    } catch {
+      notify("Could not save payment. Please try again.", "error");
+    } finally {
+      pendingRef.current.delete(id);
+      setPendingRows(new Set(pendingRef.current));
+    }
   }
 
   const overdue = visibleRows.filter((row) => row.days >= OVERDUE_DAYS);
@@ -111,10 +128,10 @@ export function OwingOverview({
               <button
                 type="button"
                 className="btn btn-paid"
-                disabled={pending}
+                disabled={pendingRows.has(row.id)}
                 onClick={() => pay(row.id, row.sessionId)}
               >
-                {t(pending ? "Saving..." : "Paid")}
+                {t(pendingRows.has(row.id) ? "Saving..." : "Paid")}
               </button>
             </li>
           ))}
