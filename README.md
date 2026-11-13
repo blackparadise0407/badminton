@@ -7,6 +7,10 @@ caches static assets and signed-in pages that have been visited; do not use
 offline caching on a shared or unlocked device because those pages can contain
 session and payment information. Use **Offline data on this device** in the app
 to clear saved pages.
+Client API reads also use a bounded, 30-second in-memory cache for faster
+in-app navigation. Successful mutations and retries invalidate cached reads;
+the server remains authoritative, and authenticated API responses are not
+cached by Next.js.
 Session summary images now open in an in-app preview with a return link, plus
 native sharing and download controls where supported.
 

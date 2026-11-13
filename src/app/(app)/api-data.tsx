@@ -3,6 +3,18 @@
 import { useEffect, useState } from "react";
 
 const DATA_CHANGED_EVENT = "badminton:data-changed";
+const DATA_CACHE_TTL_MS = 30_000;
+const DATA_CACHE_MAX_ENTRIES = 50;
+
+const apiDataCache = new Map<string, { data: unknown; cachedAt: number }>();
+
+function cacheApiData(path: string, data: unknown) {
+  apiDataCache.set(path, { data, cachedAt: Date.now() });
+  if (apiDataCache.size > DATA_CACHE_MAX_ENTRIES) {
+    const oldestPath = apiDataCache.keys().next().value;
+    if (oldestPath !== undefined) apiDataCache.delete(oldestPath);
+  }
+}
 
 export function useApiData<T>(path: string) {
   const [revision, setRevision] = useState(0);
@@ -15,6 +27,17 @@ export function useApiData<T>(path: string) {
 
   useEffect(() => {
     const controller = new AbortController();
+    const cached = apiDataCache.get(path);
+    if (cached && Date.now() - cached.cachedAt < DATA_CACHE_TTL_MS) {
+      setResult({
+        path,
+        data: cached.data as T,
+        error: null,
+        loading: false,
+      });
+      return () => controller.abort();
+    }
+
     setResult({ path, data: null, error: null, loading: true });
 
     fetch(path, { cache: "no-store", signal: controller.signal })
@@ -29,7 +52,11 @@ export function useApiData<T>(path: string) {
         }
         return (await response.json()) as T;
       })
-      .then((data) => setResult({ path, data, error: null, loading: false }))
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        cacheApiData(path, data);
+        setResult({ path, data, error: null, loading: false });
+      })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setResult({
@@ -45,23 +72,31 @@ export function useApiData<T>(path: string) {
   }, [path, revision]);
 
   useEffect(() => {
-    const reload = () => setRevision((value) => value + 1);
+    const reload = () => {
+      apiDataCache.clear();
+      setRevision((value) => value + 1);
+    };
     window.addEventListener(DATA_CHANGED_EVENT, reload);
     return () => window.removeEventListener(DATA_CHANGED_EVENT, reload);
   }, []);
+
+  const retry = () => {
+    apiDataCache.delete(path);
+    setRevision((value) => value + 1);
+  };
 
   if (result.path !== path) {
     return {
       data: null,
       error: null,
       loading: true,
-      retry: () => setRevision((value) => value + 1),
+      retry,
     };
   }
 
   return {
     ...result,
-    retry: () => setRevision((value) => value + 1),
+    retry,
   };
 }
 
