@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useI18n } from "../i18n-provider";
 
 type ToastVariant = "error" | "info" | "success";
 type Toast = { id: number; message: string; variant: ToastVariant };
@@ -16,6 +17,7 @@ type Notify = (message: string, variant?: ToastVariant) => void;
 const ToastContext = createContext<Notify | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
   const [toast, setToast] = useState<Toast | null>(null);
   const nextId = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,11 +54,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           role={toast.variant === "error" ? "alert" : "status"}
           aria-live={toast.variant === "error" ? "assertive" : "polite"}
         >
-          <span>{toast.message}</span>
+          <span>{t(toast.message)}</span>
           <button
             type="button"
             className="app-toast-dismiss"
-            aria-label="Dismiss notification"
+            aria-label={t("Dismiss notification")}
             onClick={dismiss}
           >
             <svg viewBox="0 0 20 20" aria-hidden="true">

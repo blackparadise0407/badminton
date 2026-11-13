@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { createSession } from "../actions";
 import { refreshAfter } from "../../api-data";
+import { useI18n } from "../../../i18n-provider";
 
 type P = {
   id: number;
@@ -30,6 +31,7 @@ export function NewSessionForm({
   players: P[];
   defaults: Defaults;
 }) {
+  const { t } = useI18n();
   const [start, setStart] = useState(String(defaults.startHour));
   const [end, setEnd] = useState(String(defaults.endHour));
   // only the hours someone changed by hand; everything else follows the session hours
@@ -43,16 +45,18 @@ export function NewSessionForm({
     <form action={refreshAfter(createSession)} className="space-y-7">
       <div>
         <Link href="/sessions" className="text-sm text-court">
-          Back to sessions
+          {t("Back to sessions")}
         </Link>
-        <h1 className="text-[22px] font-bold leading-tight">New session</h1>
+        <h1 className="text-[22px] font-bold leading-tight">
+          {t("New session")}
+        </h1>
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-medium">When and where</h2>
+        <h2 className="font-medium">{t("When and where")}</h2>
         <div className="grid grid-cols-2 gap-3">
           <label>
-            <span className="label">Date</span>
+            <span className="label">{t("Date")}</span>
             <input
               name="date"
               type="date"
@@ -62,7 +66,7 @@ export function NewSessionForm({
             />
           </label>
           <label>
-            <span className="label">Venue</span>
+            <span className="label">{t("Venue")}</span>
             <input
               name="venue"
               defaultValue={defaults.venue}
@@ -70,7 +74,7 @@ export function NewSessionForm({
             />
           </label>
           <label>
-            <span className="label">Session start</span>
+            <span className="label">{t("Session start")}</span>
             <input
               type="number"
               step={0.5}
@@ -82,7 +86,7 @@ export function NewSessionForm({
             />
           </label>
           <label>
-            <span className="label">Session end</span>
+            <span className="label">{t("Session end")}</span>
             <input
               type="number"
               step={0.5}
@@ -96,16 +100,18 @@ export function NewSessionForm({
         </div>
         <p className={`text-sm ${sessionBad ? "text-unpaid" : "text-muted"}`}>
           {sessionBad
-            ? "End must be later than start."
-            : "Everyone gets these hours. Adjust individual players below. Times are 24h, 19.5 is 7:30 pm."}
+            ? t("End must be later than start.")
+            : t(
+                "Everyone gets these hours. Adjust individual players below. Times are 24h, 19.5 is 7:30 pm.",
+              )}
         </p>
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-medium">Costs</h2>
+        <h2 className="font-medium">{t("Costs")}</h2>
         <div className="grid grid-cols-2 gap-3">
           <label>
-            <span className="label">Courts</span>
+            <span className="label">{t("Courts")}</span>
             <input
               name="courts"
               type="number"
@@ -115,7 +121,7 @@ export function NewSessionForm({
             />
           </label>
           <label>
-            <span className="label">Court rate per hour</span>
+            <span className="label">{t("Court rate per hour")}</span>
             <input
               name="courtRatePerHour"
               type="number"
@@ -128,7 +134,7 @@ export function NewSessionForm({
             />
           </label>
           <label>
-            <span className="label">Price per shuttle</span>
+            <span className="label">{t("Price per shuttle")}</span>
             <input
               name="shuttlePrice"
               type="number"
@@ -141,7 +147,7 @@ export function NewSessionForm({
             />
           </label>
           <label>
-            <span className="label">Shuttles used</span>
+            <span className="label">{t("Shuttles used")}</span>
             <input
               name="shuttlesUsed"
               type="number"
@@ -152,7 +158,7 @@ export function NewSessionForm({
             />
           </label>
           <label>
-            <span className="label">Drinks bill (water bucket)</span>
+            <span className="label">{t("Drinks bill (water bucket)")}</span>
             <input
               name="drinksTotal"
               type="number"
@@ -164,7 +170,7 @@ export function NewSessionForm({
             />
           </label>
           <label>
-            <span className="label">Snack bill</span>
+            <span className="label">{t("Snack bill")}</span>
             <input
               name="snackTotal"
               type="number"
@@ -177,22 +183,22 @@ export function NewSessionForm({
           </label>
         </div>
         <p className="text-sm text-muted">
-          Shuttles used is tubes opened × 12, minus what is left.
+          {t("Shuttles used is tubes opened × 12, minus what is left.")}
         </p>
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-medium">Who played</h2>
+        <h2 className="font-medium">{t("Who played")}</h2>
         <div className="list">
           <div
             className={`grid ${COLS} items-center gap-x-2 px-3 py-2 text-xs text-muted`}
           >
             <span />
-            <span>Name</span>
-            <span className="text-center">Start</span>
-            <span className="text-center">End</span>
-            <span className="text-center">Drinks</span>
-            <span className="text-center">Snack</span>
+            <span>{t("Name")}</span>
+            <span className="text-center">{t("Start")}</span>
+            <span className="text-center">{t("End")}</span>
+            <span className="text-center">{t("Drinks")}</span>
+            <span className="text-center">{t("Snack")}</span>
           </div>
           {players.map((p) => {
             const sKey = `start_${p.id}`;
@@ -212,7 +218,7 @@ export function NewSessionForm({
                   name={`in_${p.id}`}
                   type="checkbox"
                   defaultChecked={p.isRegular}
-                  aria-label={`${p.name} played`}
+                  aria-label={t("{name} played", { name: p.name })}
                   className="size-5 accent-court"
                 />
                 <span className="truncate">
@@ -227,7 +233,7 @@ export function NewSessionForm({
                   max={24}
                   value={s}
                   onChange={(ev) => setOverride(sKey, ev.target.value)}
-                  aria-label={`${p.name} start`}
+                  aria-label={t("{name} start", { name: p.name })}
                   aria-invalid={bad}
                   className={cls(sKey)}
                 />
@@ -239,7 +245,7 @@ export function NewSessionForm({
                   max={24}
                   value={e}
                   onChange={(ev) => setOverride(eKey, ev.target.value)}
-                  aria-label={`${p.name} end`}
+                  aria-label={t("{name} end", { name: p.name })}
                   aria-invalid={bad}
                   className={cls(eKey)}
                 />
@@ -247,29 +253,31 @@ export function NewSessionForm({
                   name={`drinks_${p.id}`}
                   type="checkbox"
                   defaultChecked
-                  aria-label={`${p.name} drinks from the bucket`}
+                  aria-label={t("{name} drinks from the bucket", {
+                    name: p.name,
+                  })}
                   className="size-5 justify-self-center accent-court"
                 />
                 <input
                   name={`snack_${p.id}`}
                   type="checkbox"
-                  aria-label={`${p.name} joined snack`}
+                  aria-label={t("{name} joined snack", { name: p.name })}
                   className="size-5 justify-self-center accent-court"
                 />
               </div>
             );
           })}
           {players.length === 0 && (
-            <p className="p-4 text-muted">Add players first.</p>
+            <p className="p-4 text-muted">{t("Add players first.")}</p>
           )}
         </div>
         <p className="text-sm text-muted">
-          A blue border means you changed that player's hours by hand.
+          {t("A blue border means you changed that player's hours by hand.")}
         </p>
       </section>
 
       <button className="btn btn-primary w-full" disabled={sessionBad}>
-        Create session
+        {t("Create session")}
       </button>
     </form>
   );

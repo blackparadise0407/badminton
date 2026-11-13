@@ -9,6 +9,7 @@ import type { SessionDetailData } from "@/lib/page-data-types";
 import { PaymentControls } from "./payment-controls";
 import { OptimisticToggle } from "../../optimistic-toggle";
 import { PageDataState, refreshAfter, useApiData } from "../../api-data";
+import { useI18n } from "../../../i18n-provider";
 import {
   addAttendee,
   deleteSession,
@@ -21,13 +22,19 @@ import {
 } from "./actions";
 
 export default function SessionDetail() {
+  const { language, t } = useI18n();
+  const money = (amount: number) => vnd(amount, language);
   const { id } = useParams<{ id: string }>();
   const sid = Number(id);
   const { data, error, loading, retry } = useApiData<SessionDetailData>(
     `/api/app/sessions/${id}`,
   );
   if (!Number.isInteger(sid)) {
-    return <p role="alert" className="text-unpaid">Invalid session id.</p>;
+    return (
+      <p role="alert" className="text-unpaid">
+        {t("Invalid session id.")}
+      </p>
+    );
   }
   if (!data) {
     return <PageDataState loading={loading} error={error} retry={retry} />;
@@ -52,14 +59,14 @@ export default function SessionDetail() {
     <div className="space-y-4">
       <div>
         <Link href="/sessions" className="text-sm text-court">
-          Back to sessions
+          {t("Back to sessions")}
         </Link>
         <h1 className="text-[22px] font-bold leading-tight">
-          {fmtDate(s.date)}
+          {fmtDate(s.date, language)}
         </h1>
         <p className="text-sm text-muted">
           {s.venue || "No venue"}
-          {s.status === "archived" ? ", archived" : ""}
+          {s.status === "archived" ? `, ${t("Archived").toLowerCase()}` : ""}
         </p>
       </div>
 
@@ -69,24 +76,31 @@ export default function SessionDetail() {
           className="flex items-center justify-between gap-3 rounded-xl bg-partial-tint p-3 text-partial"
         >
           <p className="text-sm">
-            Amounts changed. Save them before taking payments or sharing cards.
+            {t("Amounts changed. Save them before taking payments or sharing cards.")}
           </p>
-          <button className="btn btn-primary shrink-0">Save amounts</button>
+          <button className="btn btn-primary shrink-0">
+            {t("Save amounts")}
+          </button>
         </form>
       )}
 
       <section className="panel p-4">
-        <div className="text-sm text-muted">Collected</div>
+        <div className="text-sm text-muted">{t("Collected")}</div>
         <div className="flex flex-wrap items-baseline gap-x-2">
           <span className="text-[32px] font-bold leading-tight tabular-nums">
-            {vnd(collected)}
+            {money(collected)}
           </span>
-          <span className="text-muted">of {vnd(split.totalOwed)}</span>
+          <span className="text-muted">
+            {t("of {amount}", { amount: money(split.totalOwed) })}
+          </span>
         </div>
         <div
           className="mt-3 flex gap-1"
           role="img"
-          aria-label={`${paidCount} of ${attendees.length} paid`}
+          aria-label={t("{paid} of {total} paid", {
+            paid: paidCount,
+            total: attendees.length,
+          })}
         >
           {attendees.map((a, i) => (
             <span
@@ -97,30 +111,33 @@ export default function SessionDetail() {
           ))}
         </div>
         <div className="mt-1 text-sm text-muted">
-          {paidCount} of {attendees.length} paid
+          {t("{paid} of {total} paid", {
+            paid: paidCount,
+            total: attendees.length,
+          })}
         </div>
 
         <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3 text-sm">
           <div>
-            <dt className="text-muted">Outstanding</dt>
+            <dt className="text-muted">{t("Outstanding")}</dt>
             <dd
               className={`text-base font-medium tabular-nums ${outstanding > 0 ? "text-unpaid" : ""}`}
             >
-              {vnd(outstanding)}
+              {money(outstanding)}
             </dd>
           </div>
           <div>
-            <dt className="text-muted">Spent</dt>
+            <dt className="text-muted">{t("Spent")}</dt>
             <dd className="text-base font-medium tabular-nums">
-              {vnd(split.totalSpent)}
+              {money(split.totalSpent)}
             </dd>
           </div>
           <div>
-            <dt className="text-muted">Surplus</dt>
+            <dt className="text-muted">{t("Surplus")}</dt>
             <dd
               className={`text-base font-medium tabular-nums ${split.surplus < 0 ? "text-unpaid" : "text-paid"}`}
             >
-              {vnd(split.surplus)}
+              {money(split.surplus)}
             </dd>
           </div>
         </dl>
@@ -139,7 +156,7 @@ export default function SessionDetail() {
             ] as [string, number][]
           )
             .filter(([, v]) => v > 0)
-            .map(([k, v]) => `${k} ${vnd(v)}`)
+            .map(([k, v]) => `${t(k)} ${money(v)}`)
             .join(", ");
 
           return (
@@ -155,11 +172,15 @@ export default function SessionDetail() {
                     </span>
                   </div>
                   <div className="text-sm text-muted">
-                    {`${fmtHour(a.startHour)} to ${fmtHour(a.endHour)}, ${l.hours}h`}
+                    {t("{start} to {end}, {hours}h", {
+                      start: fmtHour(a.startHour),
+                      end: fmtHour(a.endHour),
+                      hours: l.hours,
+                    })}
                   </div>
                 </div>
                 <div className="text-[19px] font-bold tabular-nums">
-                  {vnd(l.total)}
+                  {money(l.total)}
                 </div>
               </div>
 
@@ -171,8 +192,8 @@ export default function SessionDetail() {
                     <OptimisticToggle
                       initialValue={a.joinedDrinks}
                       action={toggleShared.bind(null, a.id, "joinedDrinks")}
-                      onLabel="Drinks in"
-                      offLabel="No drinks"
+                      onLabel={t("Drinks in")}
+                      offLabel={t("No drinks")}
                       className="btn btn-sm"
                       onClassName="border-court bg-court-tint text-court"
                       offClassName="text-muted"
@@ -182,8 +203,8 @@ export default function SessionDetail() {
                     <OptimisticToggle
                       initialValue={a.joinedSnack}
                       action={toggleShared.bind(null, a.id, "joinedSnack")}
-                      onLabel="Snack in"
-                      offLabel="No snack"
+                      onLabel={t("Snack in")}
+                      offLabel={t("No snack")}
                       className="btn btn-sm"
                       onClassName="border-court bg-court-tint text-court"
                       offClassName="text-muted"
@@ -201,7 +222,7 @@ export default function SessionDetail() {
 
               <details>
                 <summary className="cursor-pointer text-sm text-court">
-                  Hours and removal
+                  {t("Hours and removal")}
                 </summary>
                 <div className="mt-3 space-y-3">
                   <form
@@ -209,7 +230,7 @@ export default function SessionDetail() {
                     className="grid grid-cols-2 gap-2"
                   >
                     <label>
-                      <span className="label">Start</span>
+                      <span className="label">{t("Start")}</span>
                       <input
                         name="startHour"
                         type="number"
@@ -219,7 +240,7 @@ export default function SessionDetail() {
                       />
                     </label>
                     <label>
-                      <span className="label">End</span>
+                      <span className="label">{t("End")}</span>
                       <input
                         name="endHour"
                         type="number"
@@ -228,11 +249,13 @@ export default function SessionDetail() {
                         className="field"
                       />
                     </label>
-                    <button className="btn col-span-2">Save hours</button>
+                    <button className="btn col-span-2">
+                      {t("Save hours")}
+                    </button>
                   </form>
                   <form action={refreshAfter(removeAttendance.bind(null, a.id))}>
                     <button className="btn btn-sm btn-danger">
-                      Remove from session
+                      {t("Remove from session")}
                     </button>
                   </form>
                 </div>
@@ -241,7 +264,9 @@ export default function SessionDetail() {
           );
         })}
         {attendees.length === 0 && (
-          <li className="p-4 text-muted">Nobody in this session yet.</li>
+          <li className="p-4 text-muted">
+            {t("Nobody in this session yet.")}
+          </li>
         )}
       </ul>
 
@@ -250,14 +275,14 @@ export default function SessionDetail() {
           action={refreshAfter(addAttendee.bind(null, s.id))}
           className="flex gap-2"
         >
-          <select name="playerId" aria-label="Player to add" className="field">
+          <select name="playerId"           aria-label={t("Player to add")} className="field">
             {available.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
           </select>
-          <button className="btn shrink-0">Add player</button>
+          <button className="btn shrink-0">{t("Add player")}</button>
         </form>
       )}
 
@@ -265,7 +290,7 @@ export default function SessionDetail() {
         <li className="p-4">
           <details>
             <summary className="cursor-pointer font-medium">
-              Share summary image
+              {t("Share summary image")}
             </summary>
             <form
               action={`/sessions/${s.id}/share`}
@@ -278,7 +303,7 @@ export default function SessionDetail() {
                   name="hideStatus"
                   className="size-5 accent-court"
                 />{" "}
-                Hide who has paid
+                {t("Hide who has paid")}
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -286,9 +311,11 @@ export default function SessionDetail() {
                   name="hideDetail"
                   className="size-5 accent-court"
                 />{" "}
-                Show names and totals only
+                {t("Show names and totals only")}
               </label>
-              <button className="btn btn-primary w-full">Preview image</button>
+              <button className="btn btn-primary w-full">
+                {t("Preview image")}
+              </button>
             </form>
           </details>
         </li>
@@ -296,14 +323,14 @@ export default function SessionDetail() {
         <li className="p-4">
           <details>
             <summary className="cursor-pointer font-medium">
-              Session numbers
+              {t("Session numbers")}
             </summary>
             <form
               action={refreshAfter(updateSession.bind(null, s.id))}
               className="mt-3 grid grid-cols-2 gap-3"
             >
               <label>
-                <span className="label">Venue</span>
+                <span className="label">{t("Venue")}</span>
                 <input
                   name="venue"
                   defaultValue={s.venue ?? ""}
@@ -311,7 +338,7 @@ export default function SessionDetail() {
                 />
               </label>
               <label>
-                <span className="label">Courts</span>
+                <span className="label">{t("Courts")}</span>
                 <input
                   name="courts"
                   type="number"
@@ -321,7 +348,7 @@ export default function SessionDetail() {
                 />
               </label>
               <label>
-                <span className="label">Court rate per hour</span>
+                <span className="label">{t("Court rate per hour")}</span>
                 <input
                   name="courtRatePerHour"
                   type="number"
@@ -332,7 +359,7 @@ export default function SessionDetail() {
                 />
               </label>
               <label>
-                <span className="label">Price per shuttle</span>
+                <span className="label">{t("Price per shuttle")}</span>
                 <input
                   name="shuttlePrice"
                   type="number"
@@ -343,7 +370,7 @@ export default function SessionDetail() {
                 />
               </label>
               <label>
-                <span className="label">Shuttles used</span>
+                <span className="label">{t("Shuttles used")}</span>
                 <input
                   name="shuttlesUsed"
                   type="number"
@@ -354,7 +381,7 @@ export default function SessionDetail() {
                 />
               </label>
               <label>
-                <span className="label">Drinks bill (water bucket)</span>
+                <span className="label">{t("Drinks bill (water bucket)")}</span>
                 <input
                   name="drinksTotal"
                   type="number"
@@ -365,7 +392,7 @@ export default function SessionDetail() {
                 />
               </label>
               <label className="col-span-2">
-                <span className="label">Snack bill</span>
+                <span className="label">{t("Snack bill")}</span>
                 <input
                   name="snackTotal"
                   type="number"
@@ -376,7 +403,7 @@ export default function SessionDetail() {
                 />
               </label>
               <button className="btn btn-primary col-span-2">
-                Save session numbers
+                {t("Save session numbers")}
               </button>
             </form>
           </details>
@@ -386,10 +413,13 @@ export default function SessionDetail() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm text-muted">
               {s.status === "archived"
-                ? "This session is archived."
+                ? t("This session is archived.")
                 : outstanding > 0
-                  ? `${vnd(outstanding)} is still outstanding. It stays on the dashboard after archiving.`
-                  : "Everything is collected."}
+                  ? t(
+                      "{amount} is still outstanding. It stays on the dashboard after archiving.",
+                      { amount: money(outstanding) },
+                    )
+                  : t("Everything is collected.")}
             </span>
             <OptimisticToggle
               initialValue={s.status === "archived"}
@@ -400,8 +430,8 @@ export default function SessionDetail() {
               )}
               onAction={setArchived.bind(null, s.id, true)}
               offAction={setArchived.bind(null, s.id, false)}
-              onLabel="Unarchive"
-              offLabel="Archive session"
+              onLabel={t("Unarchive")}
+              offLabel={t("Archive session")}
               className="btn"
             />
           </div>
@@ -410,16 +440,18 @@ export default function SessionDetail() {
         <li className="p-4">
           <details>
             <summary className="cursor-pointer font-medium text-unpaid">
-              Delete session
+              {t("Delete session")}
             </summary>
             <form
               action={deleteSession.bind(null, s.id)}
               className="mt-3 space-y-2"
             >
               <p className="text-sm text-muted">
-                This removes the session, its players, and their payments.
+                {t("This removes the session, its players, and their payments.")}
               </p>
-              <button className="btn btn-danger">Delete this session</button>
+              <button className="btn btn-danger">
+                {t("Delete this session")}
+              </button>
             </form>
           </details>
         </li>

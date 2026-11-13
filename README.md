@@ -11,6 +11,8 @@ Client API reads also use a bounded, 30-second in-memory cache for faster
 in-app navigation. Successful mutations and retries invalidate cached reads;
 the server remains authoritative, and authenticated API responses are not
 cached by Next.js.
+The interface supports English and Vietnamese. Use the language selector to
+change the language; the selection is saved on the current device.
 Session summary images now open in an in-app preview with a return link, plus
 native sharing and download controls where supported.
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "../i18n-provider";
 
 const DATA_CHANGED_EVENT = "badminton:data-changed";
 const DATA_CACHE_TTL_MS = 30_000;
@@ -119,10 +120,11 @@ export function PageDataState({
   error: string | null;
   retry: () => void;
 }) {
+  const { t } = useI18n();
   if (loading) {
     return (
-      <div className="space-y-5" role="status" aria-label="Loading page">
-        <span className="sr-only">Loading page</span>
+      <div className="space-y-5" role="status" aria-label={t("Loading page")}>
+        <span className="sr-only">{t("Loading page")}</span>
         <div className="h-7 w-40 animate-pulse rounded bg-line" />
         <div className="h-24 animate-pulse rounded-xl bg-line" />
         <div className="h-40 animate-pulse rounded-xl bg-line" />
@@ -133,10 +135,10 @@ export function PageDataState({
   return (
     <div role="alert" className="rounded-xl border border-unpaid bg-paper p-4">
       <p className="text-sm text-unpaid">
-        {error ?? "Could not load this page."}
+        {t(error ?? "Could not load this page.")}
       </p>
       <button type="button" className="btn btn-sm mt-3" onClick={retry}>
-        Try again
+        {t("Try again")}
       </button>
     </div>
   );

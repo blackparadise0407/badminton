@@ -5,8 +5,10 @@ import { fmtDate, vnd } from "@/lib/format";
 import type { DashboardData } from "@/lib/page-data-types";
 import { PageDataState, useApiData } from "./api-data";
 import { OwingOverview } from "./owing-overview";
+import { useI18n } from "../i18n-provider";
 
 export default function Dashboard() {
+  const { language, t } = useI18n();
   const { data, error, loading, retry } =
     useApiData<DashboardData>("/api/app/dashboard");
   if (!data) {
@@ -17,15 +19,17 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-[22px] font-bold leading-tight">Dashboard</h1>
+        <h1 className="text-[22px] font-bold leading-tight">
+          {t("Dashboard")}
+        </h1>
         <Link href="/sessions/new" className="btn btn-primary">
-          New session
+          {t("New session")}
         </Link>
       </div>
 
       {unsavedSessions.length > 0 && (
         <div className="rounded-xl bg-partial-tint p-3 text-sm text-partial">
-          Amounts are not saved for{" "}
+          {t("Amounts are not saved for")}{" "}
           {unsavedSessions.map((s, i) => (
             <span key={s.id}>
               {i > 0 && ", "}
@@ -33,11 +37,11 @@ export default function Dashboard() {
                 href={`/sessions/${s.id}`}
                 className="font-medium underline"
               >
-                {fmtDate(s.date)}
+                {fmtDate(s.date, language)}
               </Link>
             </span>
           ))}
-          . Those players won't show up below until you save.
+          . {t("Those players won't show up below until you save.")}
         </div>
       )}
 

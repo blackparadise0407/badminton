@@ -3,6 +3,7 @@
 import { useOffline } from "next/offline";
 import { useEffect, useState } from "react";
 import { useToast } from "./(app)/toast-provider";
+import { useI18n } from "./i18n-provider";
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -17,6 +18,7 @@ export function PwaControls() {
   const [isIos, setIsIos] = useState(false);
   const [swError, setSwError] = useState<string | null>(null);
   const notify = useToast();
+  const { t } = useI18n();
 
   useEffect(() => {
     setIsIos(/iphone|ipad|ipod/i.test(window.navigator.userAgent));
@@ -113,42 +115,47 @@ export function PwaControls() {
           role="status"
           className="rounded-lg bg-partial-tint px-3 py-2 text-sm text-partial"
         >
-          Offline. Previously visited pages may be available. Pending requests
-          will retry when you reconnect.
+          {t(
+            "Offline. Previously visited pages may be available. Pending requests will retry when you reconnect.",
+          )}
         </p>
       )}
 
       {swError && (
         <p role="status" className="text-sm text-unpaid">
-          Offline support could not start: {swError}
+          {t("Offline support could not start: {error}", {
+            error: t(swError),
+          })}
         </p>
       )}
 
       {!isInstalled && installPrompt && (
         <button onClick={installApp} className="btn btn-sm">
-          Install app
+          {t("Install app")}
         </button>
       )}
 
       {!isInstalled && isIos && (
         <p className="text-xs text-muted">
-          To install, tap Share in Safari, then Add to Home Screen.
+          {t("To install, tap Share in Safari, then Add to Home Screen.")}
         </p>
       )}
 
       <details className="text-xs text-muted">
-        <summary className="cursor-pointer">Offline data on this device</summary>
+        <summary className="cursor-pointer">
+          {t("Offline data on this device")}
+        </summary>
         <p className="mt-1">
-          Previously visited signed-in pages can be stored in this browser,
-          including session and payment information. Anyone with access to this
-          unlocked device may be able to view them.
+          {t(
+            "Previously visited signed-in pages can be stored in this browser, including session and payment information. Anyone with access to this unlocked device may be able to view them.",
+          )}
         </p>
         <button
           type="button"
           className="mt-2 underline"
           onClick={clearCachedPages}
         >
-          Clear saved pages
+          {t("Clear saved pages")}
         </button>
       </details>
     </div>

@@ -5,8 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { fmtDate } from "@/lib/format";
 import type { SessionListRow } from "@/lib/page-data-types";
 import { PageDataState, useApiData } from "../api-data";
+import { useI18n } from "../../i18n-provider";
 
 export default function SessionsPage() {
+  const { language, t } = useI18n();
   const showArchived = useSearchParams().get("show") === "archived";
   const path = `/api/app/sessions${showArchived ? "?show=archived" : ""}`;
   const { data, error, loading, retry } = useApiData<SessionListRow[]>(path);
@@ -21,18 +23,20 @@ export default function SessionsPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-[22px] font-bold leading-tight">Sessions</h1>
+        <h1 className="text-[22px] font-bold leading-tight">
+          {t("Sessions")}
+        </h1>
         <Link href="/sessions/new" className="btn btn-primary">
-          New session
+          {t("New session")}
         </Link>
       </div>
 
       <div className="inline-flex rounded-lg border border-line bg-paper p-1 text-sm">
         <Link href="/sessions" className={seg(!showArchived)}>
-          Active
+          {t("Active")}
         </Link>
         <Link href="/sessions?show=archived" className={seg(showArchived)}>
-          Archived
+          {t("Archived")}
         </Link>
       </div>
 
@@ -44,16 +48,20 @@ export default function SessionsPage() {
               className="flex items-center justify-between gap-3 p-4 active:bg-floor"
             >
               <div className="min-w-0">
-                <div className="text-[17px] font-medium">{fmtDate(s.date)}</div>
+                <div className="text-[17px] font-medium">
+                  {fmtDate(s.date, language)}
+                </div>
                 <div className="truncate text-sm text-muted">
                   {s.venue ? `${s.venue}, ` : ""}
-                  {s.count} players
+                  {t("{count} players", { count: s.count })}
                 </div>
               </div>
               {s.unpaid > 0 ? (
-                <span className="chip chip-unpaid">{s.unpaid} unpaid</span>
+                <span className="chip chip-unpaid">
+                  {t("{count} unpaid", { count: s.unpaid })}
+                </span>
               ) : s.count > 0 ? (
-                <span className="chip chip-paid">All paid</span>
+                <span className="chip chip-paid">{t("All paid")}</span>
               ) : null}
             </Link>
           </li>
@@ -61,8 +69,8 @@ export default function SessionsPage() {
         {rows.length === 0 && (
           <li className="p-4 text-muted">
             {showArchived
-              ? "Nothing archived yet."
-              : "No sessions yet. Create one after your next game."}
+              ? t("Nothing archived yet.")
+              : t("No sessions yet. Create one after your next game.")}
           </li>
         )}
       </ul>

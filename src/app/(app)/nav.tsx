@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "../i18n-provider";
 
 const tabs = [
   { href: "/", label: "Dashboard", icon: "dashboard" },
@@ -54,21 +55,22 @@ function TabIcon({ name }: { name: string }) {
 
 export function Nav() {
   const path = usePathname();
+  const { t } = useI18n();
   const active = (href: string) =>
     href === "/" ? path === "/" : path.startsWith(href);
 
   return (
-    <nav className="bottom-nav" aria-label="Primary navigation">
+    <nav className="bottom-nav" aria-label={t("Primary navigation")}>
       <div className="bottom-nav-inner">
-        {tabs.map((t) => (
+        {tabs.map((tab) => (
           <Link
-            key={t.href}
-            href={t.href}
-            aria-current={active(t.href) ? "page" : undefined}
-            className={`bottom-nav-link ${active(t.href) ? "is-active" : ""}`}
+            key={tab.href}
+            href={tab.href}
+            aria-current={active(tab.href) ? "page" : undefined}
+            className={`bottom-nav-link ${active(tab.href) ? "is-active" : ""}`}
           >
-            <TabIcon name={t.icon} />
-            <span>{t.label}</span>
+            <TabIcon name={tab.icon} />
+            <span>{t(tab.label)}</span>
           </Link>
         ))}
       </div>

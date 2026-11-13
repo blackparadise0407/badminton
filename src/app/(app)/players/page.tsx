@@ -4,8 +4,10 @@ import { addPlayer, toggleFlag, setDefaultHours } from "./actions";
 import { OptimisticToggle } from "../optimistic-toggle";
 import { refreshAfter, PageDataState, useApiData } from "../api-data";
 import type { PlayerRecord } from "@/lib/page-data-types";
+import { useI18n } from "../../i18n-provider";
 
 export default function PlayersPage() {
+  const { t } = useI18n();
   const { data, error, loading, retry } =
     useApiData<PlayerRecord[]>("/api/app/players");
   if (!data) {
@@ -15,26 +17,26 @@ export default function PlayersPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-[22px] font-bold leading-tight">Players</h1>
+      <h1 className="text-[22px] font-bold leading-tight">{t("Players")}</h1>
 
       <details className="panel p-4">
         <summary className="cursor-pointer font-medium text-court">
-          Add player
+          {t("Add player")}
         </summary>
         <form
           action={refreshAfter(addPlayer)}
           className="mt-4 grid grid-cols-2 gap-3"
         >
           <label>
-            <span className="label">Name</span>
+            <span className="label">{t("Name")}</span>
             <input name="name" required className="field" />
           </label>
           <label>
-            <span className="label">Nickname (optional)</span>
+            <span className="label">{t("Nickname (optional)")}</span>
             <input name="nickname" className="field" />
           </label>
           <label>
-            <span className="label">Usual hours</span>
+            <span className="label">{t("Usual hours")}</span>
             <input
               name="defaultHours"
               type="number"
@@ -51,9 +53,11 @@ export default function PlayersPage() {
               type="checkbox"
               className="size-5 accent-court"
             />{" "}
-            Regular
+            {t("Regular")}
           </label>
-          <button className="btn btn-primary col-span-2">Add player</button>
+          <button className="btn btn-primary col-span-2">
+            {t("Add player")}
+          </button>
         </form>
       </details>
 
@@ -81,18 +85,18 @@ export default function PlayersPage() {
                 min="0.5"
                 max="12"
                 defaultValue={p.defaultHours}
-                aria-label={`${p.name} usual hours`}
+                aria-label={t("{name} usual hours", { name: p.name })}
                 className="field min-h-9 w-16 px-2 text-center"
               />
               <span className="text-sm text-muted">h</span>
-              <button className="btn btn-sm">Save</button>
+              <button className="btn btn-sm">{t("Save")}</button>
             </form>
 
             <OptimisticToggle
               initialValue={p.isRegular}
               action={toggleFlag.bind(null, p.id, "isRegular")}
-              onLabel="Regular"
-              offLabel="Make regular"
+              onLabel={t("Regular")}
+              offLabel={t("Make regular")}
               className="btn btn-sm"
               onClassName="border-court bg-court-tint text-court"
             />
@@ -100,15 +104,15 @@ export default function PlayersPage() {
             <OptimisticToggle
               initialValue={p.isActive}
               action={toggleFlag.bind(null, p.id, "isActive")}
-              onLabel="Deactivate"
-              offLabel="Reactivate"
+              onLabel={t("Deactivate")}
+              offLabel={t("Reactivate")}
               className="btn btn-sm"
             />
           </li>
         ))}
         {all.length === 0 && (
           <li className="p-4 text-muted">
-            No players yet. Add the people who usually come.
+            {t("No players yet. Add the people who usually come.")}
           </li>
         )}
       </ul>

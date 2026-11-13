@@ -5,11 +5,17 @@ import { useSearchParams } from "next/navigation";
 import type { Period } from "@/lib/stats";
 import type { StatsData } from "@/lib/page-data-types";
 import { PageDataState, useApiData } from "../api-data";
+import { HostSettlementDashboard } from "./host-settlement-dashboard";
+import { useI18n } from "../../i18n-provider";
 
 type By = "hours" | "sessions";
-const num = (n: number) => String(Math.round(n * 10) / 10);
+const num = (n: number, language: "en" | "vi") =>
+  new Intl.NumberFormat(language === "vi" ? "vi-VN" : "en-GB", {
+    maximumFractionDigits: 1,
+  }).format(Math.round(n * 10) / 10);
 
 export default function StatsPage() {
+  const { language, t } = useI18n();
   const searchParams = useSearchParams();
   const period: Period = searchParams.get("period") === "all" ? "all" : "month";
   const by: By = searchParams.get("by") === "sessions" ? "sessions" : "hours";
@@ -19,7 +25,7 @@ export default function StatsPage() {
   if (!data) {
     return <PageDataState loading={loading} error={error} retry={retry} />;
   }
-  const { rows, totalSessions } = data;
+  const { rows, totalSessions, hostSettlement } = data;
   const other: By = by === "hours" ? "sessions" : "hours";
   const sorted = [...rows].sort(
     (a, b) =>
@@ -40,7 +46,9 @@ export default function StatsPage() {
   const seg = (on: boolean) =>
     `rounded-md px-4 py-1.5 font-medium ${on ? "bg-court text-white" : "text-muted"}`;
 
-  const monthLabel = new Date(`${data.today.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString("en-GB", {
+  const monthLabel = new Date(
+    `${data.today.slice(0, 7)}-01T00:00:00Z`,
+  ).toLocaleDateString(language === "vi" ? "vi-VN" : "en-GB", {
     month: "long",
     year: "numeric",
     timeZone: "UTC",
@@ -49,11 +57,14 @@ export default function StatsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-[22px] font-bold leading-tight">Stats</h1>
+        <h1 className="text-[22px] font-bold leading-tight">{t("Stats")}</h1>
         <p className="text-sm text-muted">
-          {period === "month" ? monthLabel : "Since the first session"}
+          {period === "month" ? monthLabel : t("Since the first session")}
           {totalSessions > 0 &&
-            `, ${totalSessions} sessions and ${num(totalHours)} player-hours`}
+            `, ${t("{count} sessions and {hours} player-hours", {
+              count: totalSessions,
+              hours: num(totalHours, language),
+            })}`}
         </p>
       </div>
 
@@ -63,27 +74,29 @@ export default function StatsPage() {
             href={href({ period: "month" })}
             className={seg(period === "month")}
           >
-            This month
+            {t("This month")}
           </Link>
           <Link
             href={href({ period: "all" })}
             className={seg(period === "all")}
           >
-            All time
+            {t("All time")}
           </Link>
         </div>
         <div className="inline-flex rounded-lg border border-line bg-paper p-1 text-sm">
           <Link href={href({ by: "hours" })} className={seg(by === "hours")}>
-            Hours
+            {t("Hours")}
           </Link>
           <Link
             href={href({ by: "sessions" })}
             className={seg(by === "sessions")}
           >
-            Sessions
+            {t("Sessions")}
           </Link>
         </div>
       </div>
+
+      <HostSettlementDashboard sessions={hostSettlement} />
 
       <ul className="list">
         {sorted.map((r, i) => {
@@ -102,11 +115,10 @@ export default function StatsPage() {
                   {r.name}
                 </span>
                 <span className="text-[19px] font-bold tabular-nums">
-                  {by === "hours" ? `${num(r.hours)}h` : r.sessions}
+                  {by === "hours" ? `${num(r.hours, language)}h` : r.sessions}
                   {by === "sessions" && (
                     <span className="text-sm font-normal text-muted">
-                      {" "}
-                      sessions
+                      {" "}{t("sessions")}
                     </span>
                   )}
                 </span>
@@ -120,12 +132,15 @@ export default function StatsPage() {
               <div className="ml-9 flex flex-wrap items-center gap-2 text-sm text-muted">
                 <span>
                   {by === "hours"
-                    ? `${r.sessions} sessions, ${num(r.hours / r.sessions)}h each`
-                    : `${num(r.hours)}h played`}
+                    ? t("{count} sessions, {hours}h each", {
+                        count: r.sessions,
+                        hours: num(r.hours / r.sessions, language),
+                      })
+                    : t("{hours}h played", { hours: num(r.hours, language) })}
                 </span>
                 {everySession && (
                   <span className="chip bg-court-tint text-court">
-                    Every session
+                    {t("Every session")}
                   </span>
                 )}
               </div>
@@ -135,8 +150,8 @@ export default function StatsPage() {
         {sorted.length === 0 && (
           <li className="p-4 text-muted">
             {period === "month"
-              ? "No sessions this month yet. Check All time, or create a session after your next game."
-              : "No sessions yet. Create one after your next game."}
+              ? t("No sessions this month yet. Check All time, or create a session after your next game.")
+              : t("No sessions yet. Create one after your next game.")}
           </li>
         )}
       </ul>

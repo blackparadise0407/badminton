@@ -9,17 +9,27 @@ import { loadFonts } from "@/lib/og";
 import { buildQrUrl, fetchQrDataUrl, transferNote } from "@/lib/vietqr";
 import { statusOf } from "@/lib/payments";
 import { fmtHour, vnd } from "@/lib/format";
+import { translate, type Language } from "@/lib/i18n";
 
-const niceDate = (d: string) => d.split("-").reverse().join("/");
+const niceDate = (d: string, language: Language) =>
+  new Date(`${d}T00:00:00Z`).toLocaleDateString(
+    language === "vi" ? "vi-VN" : "en-GB",
+    { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" },
+  );
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ attendanceId: string }> },
 ) {
   if (!(await auth())) return new Response("Unauthorized", { status: 401 });
 
   const aid = Number((await params).attendanceId);
   if (!Number.isInteger(aid)) return new Response("Bad id", { status: 400 });
+  const language: Language =
+    new URL(req.url).searchParams.get("lang") === "vi" ? "vi" : "en";
+  const t = (message: string, values?: Record<string, string | number>) =>
+    translate(language, message, values);
+  const money = (amount: number) => vnd(amount, language);
 
   const { BANK_ID, BANK_NAME, BANK_ACCOUNT_NO, BANK_ACCOUNT_NAME } =
     process.env;
@@ -66,11 +76,11 @@ export async function GET(
 
   const rounding = l.total - (l.court + l.shuttle + l.drinks + l.snack);
   const lines: [string, number][] = [
-    [`Court · ${l.hours}h`, l.court],
-    ["Shuttlecocks", l.shuttle],
-    ["Drinks", l.drinks],
-    ["Snack", l.snack],
-    ["Rounding", rounding],
+    [t("Court · {hours}h", { hours: l.hours }), l.court],
+    [t("Shuttlecocks"), l.shuttle],
+    [t("Drinks"), l.drinks],
+    [t("Snack"), l.snack],
+    [t("Rounding"), rounding],
   ];
   const shown = lines.filter(([, v]) => v > 0);
 
@@ -111,7 +121,7 @@ export async function GET(
           Badminton
         </div>
         <div style={{ display: "flex", fontSize: 22, color: "#6b7280" }}>
-          {`${niceDate(data.session.date)}${data.session.venue ? " · " + data.session.venue : ""}`}
+          {`${niceDate(data.session.date, language)}${data.session.venue ? " · " + data.session.venue : ""}`}
         </div>
       </div>
 
@@ -134,7 +144,7 @@ export async function GET(
           <div style={{ display: "flex", flex: 1, paddingRight: 16 }}>
             {label}
           </div>
-          <div style={{ display: "flex" }}>{vnd(value)}</div>
+          <div style={{ display: "flex" }}>{money(value)}</div>
         </div>
       ))}
 
@@ -148,8 +158,8 @@ export async function GET(
           fontWeight: 700,
         }}
       >
-        <div style={{ display: "flex" }}>Total</div>
-        <div style={{ display: "flex" }}>{vnd(a.amountDue)}</div>
+        <div style={{ display: "flex" }}>{t("Total")}</div>
+        <div style={{ display: "flex" }}>{money(a.amountDue)}</div>
       </div>
 
       {status === "paid" ? (
@@ -166,7 +176,7 @@ export async function GET(
             borderRadius: 16,
           }}
         >
-          PAID · thank you
+          {t("PAID · thank you")}
         </div>
       ) : (
         <div
@@ -186,7 +196,10 @@ export async function GET(
                 marginBottom: 8,
               }}
             >
-              {`Received ${vnd(a.amountPaid)} · remaining ${vnd(left)}`}
+              {t("Received {received} · remaining {left}", {
+                received: money(a.amountPaid),
+                left: money(left),
+              })}
             </div>
           )}
           <div
@@ -197,7 +210,7 @@ export async function GET(
               marginBottom: 12,
             }}
           >
-            {`Please transfer ${vnd(left)}`}
+            {t("Please transfer {amount}", { amount: money(left) })}
           </div>
           {qr ? (
             <img
@@ -216,7 +229,7 @@ export async function GET(
                 padding: "40px 0",
               }}
             >
-              QR unavailable. Please transfer manually.
+              {t("QR unavailable. Please transfer manually.")}
             </div>
           )}
           <div
@@ -233,16 +246,16 @@ export async function GET(
           >
             <div
               style={{ display: "flex" }}
-            >{`Bank: ${BANK_NAME ?? BANK_ID}`}</div>
+            >{t("Bank: {bank}", { bank: BANK_NAME ?? BANK_ID })}</div>
             <div
               style={{ display: "flex" }}
-            >{`Account: ${BANK_ACCOUNT_NO}`}</div>
+            >{t("Account: {account}", { account: BANK_ACCOUNT_NO })}</div>
             <div
               style={{ display: "flex" }}
-            >{`Name: ${BANK_ACCOUNT_NAME}`}</div>
+            >{t("Name: {name}", { name: BANK_ACCOUNT_NAME })}</div>
             <div
               style={{ display: "flex", fontWeight: 700 }}
-            >{`Note: ${note}`}</div>
+            >{t("Note: {note}", { note })}</div>
           </div>
         </div>
       )}

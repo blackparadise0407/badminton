@@ -4,6 +4,8 @@ import { loadSessionData } from "@/lib/session-data";
 import { loadFonts } from "@/lib/og";
 import { statusOf, type PayStatus } from "@/lib/payments";
 import { fmtHour, vnd } from "@/lib/format";
+import { translate, type Language } from "@/lib/i18n";
+import { statusLabel } from "@/lib/status-style";
 
 type Row = {
   name: string;
@@ -22,8 +24,11 @@ type Col = {
   get: (r: Row) => string;
 };
 
-const niceDate = (d: string) => d.split("-").reverse().join("/");
-const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+const niceDate = (d: string, language: Language) =>
+  new Date(`${d}T00:00:00Z`).toLocaleDateString(
+    language === "vi" ? "vi-VN" : "en-GB",
+    { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" },
+  );
 const TINT: Record<PayStatus, string> = {
   paid: "#dcfce7",
   partial: "#fef9c3",
@@ -40,6 +45,9 @@ export async function GET(
   if (!Number.isInteger(sid)) return new Response("Bad id", { status: 400 });
 
   const sp = new URL(req.url).searchParams;
+  const language: Language = sp.get("lang") === "vi" ? "vi" : "en";
+  const t = (message: string, values?: Record<string, string | number>) =>
+    translate(language, message, values);
   const showStatus = sp.get("hideStatus") !== "on";
   const showDetail = sp.get("hideDetail") !== "on";
 
@@ -73,25 +81,52 @@ export async function GET(
 
   const detailCols: Col[] = showDetail
     ? [
-        { label: "Court", w: 110, align: "right", get: (r) => vnd(r.court) },
         {
-          label: "Shuttle",
+          label: t("Court"),
           w: 110,
           align: "right",
-          get: (r) => vnd(r.shuttle),
+          get: (r) => vnd(r.court, language),
         },
-        { label: "Drinks", w: 110, align: "right", get: (r) => vnd(r.drinks) },
-        { label: "Snack", w: 110, align: "right", get: (r) => vnd(r.snack) },
+        {
+          label: t("Shuttle"),
+          w: 110,
+          align: "right",
+          get: (r) => vnd(r.shuttle, language),
+        },
+        {
+          label: t("Drinks"),
+          w: 110,
+          align: "right",
+          get: (r) => vnd(r.drinks, language),
+        },
+        {
+          label: t("Snack"),
+          w: 110,
+          align: "right",
+          get: (r) => vnd(r.snack, language),
+        },
       ]
     : [];
   const statusCols: Col[] = showStatus
-    ? [{ label: "Status", w: 120, align: "center", get: (r) => cap(r.status) }]
+    ? [
+        {
+          label: t("Status"),
+          w: 120,
+          align: "center",
+          get: (r) => t(statusLabel[r.status]),
+        },
+      ]
     : [];
   const cols: Col[] = [
-    { label: "Name", w: showDetail ? 220 : 300, get: (r) => r.name },
-    { label: "Hours", w: 80, align: "right", get: (r) => String(r.hours) },
+    { label: t("Name"), w: showDetail ? 220 : 300, get: (r) => r.name },
+    { label: t("Hours"), w: 80, align: "right", get: (r) => String(r.hours) },
     ...detailCols,
-    { label: "Total", w: 140, align: "right", get: (r) => vnd(r.total) },
+    {
+      label: t("Total"),
+      w: 140,
+      align: "right",
+      get: (r) => vnd(r.total, language),
+    },
     ...statusCols,
   ];
   const width = cols.reduce((t, c) => t + c.w, 0) + 64;
@@ -101,21 +136,25 @@ export async function GET(
     (t, a) => t + Math.max(0, a.amountDue - a.amountPaid),
     0,
   );
+  const courtsLabel =
+    s.courts === 1
+      ? t("1 court")
+      : t("{count} courts", { count: s.courts });
   const stats: { label: string; value: number; color?: string }[] = [
-    { label: "Total spent", value: split.totalSpent },
-    { label: "Total owed", value: split.totalOwed },
+    { label: t("Total spent"), value: split.totalSpent },
+    { label: t("Total owed"), value: split.totalOwed },
     ...(showStatus
       ? [
-          { label: "Collected", value: collected, color: "#15803d" },
+          { label: t("Collected"), value: collected, color: "#15803d" },
           {
-            label: "Outstanding",
+            label: t("Outstanding"),
             value: outstanding,
             color: outstanding > 0 ? "#b91c1c" : undefined,
           },
         ]
       : []),
     {
-      label: "Surplus",
+      label: t("Surplus"),
       value: split.surplus,
       color: split.surplus < 0 ? "#b91c1c" : "#15803d",
     },
@@ -159,10 +198,14 @@ export async function GET(
             color: "#1f5c99",
           }}
         >
-          {`Badminton · ${niceDate(s.date)}`}
+          {`Badminton · ${niceDate(s.date, language)}`}
         </div>
         <div style={{ display: "flex", fontSize: 22, color: "#6b7280" }}>
-          {`${s.venue ? s.venue + " · " : ""}${s.courts} court(s) · ${fmtHour(minStart)}–${fmtHour(maxEnd)}`}
+          {`${s.venue ? s.venue + " · " : ""}${t("{courts} · {start}–{end}", {
+            courts: courtsLabel,
+            start: fmtHour(minStart),
+            end: fmtHour(maxEnd),
+          })}`}
         </div>
       </div>
 
@@ -234,7 +277,7 @@ export async function GET(
                 color: st.color ?? "#111827",
               }}
             >
-              {vnd(st.value)}
+              {vnd(st.value, language)}
             </div>
           </div>
         ))}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "../../../toast-provider";
+import { useI18n } from "../../../../i18n-provider";
 
 export function ShareImageActions({
   imageUrl,
@@ -12,6 +13,7 @@ export function ShareImageActions({
 }) {
   const [sharing, setSharing] = useState(false);
   const notify = useToast();
+  const { t } = useI18n();
 
   async function shareImage() {
     setSharing(true);
@@ -32,7 +34,7 @@ export function ShareImageActions({
         return;
       }
 
-      await navigator.share({ files: [image], title: "Badminton session" });
+      await navigator.share({ files: [image], title: t("Badminton session") });
     } catch (reason) {
       if (reason instanceof DOMException && reason.name === "AbortError") return;
       notify(
@@ -52,10 +54,10 @@ export function ShareImageActions({
         disabled={sharing}
         onClick={shareImage}
       >
-        {sharing ? "Sharing..." : "Share"}
+        {t(sharing ? "Sharing..." : "Share")}
       </button>
       <a href={imageUrl} download={fileName} className="btn btn-sm">
-        Save
+        {t("Save")}
       </a>
     </div>
   );

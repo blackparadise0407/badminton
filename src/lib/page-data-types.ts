@@ -1,6 +1,6 @@
 import type { getOwing, getUnsavedSessions } from "@/lib/owing";
 import type { loadSessionData } from "@/lib/session-data";
-import type { getLeaderboard } from "@/lib/stats";
+import type { getHostSettlement, getLeaderboard } from "@/lib/stats";
 
 export type PlayerRecord = {
   id: number;
@@ -53,4 +53,5 @@ export type NewSessionData = {
 
 export type StatsData = Awaited<ReturnType<typeof getLeaderboard>> & {
   today: string;
+  hostSettlement: Awaited<ReturnType<typeof getHostSettlement>>;
 };

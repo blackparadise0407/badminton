@@ -11,10 +11,12 @@ import { statusChip, statusLabel } from "@/lib/status-style";
 import { vnd } from "@/lib/format";
 import { useToast } from "../../toast-provider";
 import { refreshAfter } from "../../api-data";
+import { useI18n } from "../../../i18n-provider";
 
 export function StatusBadge({ due, paid }: { due: number; paid: number }) {
+  const { t } = useI18n();
   const s = statusOf(due, paid);
-  return <span className={`chip ${statusChip[s]}`}>{statusLabel[s]}</span>;
+  return <span className={`chip ${statusChip[s]}`}>{t(statusLabel[s])}</span>;
 }
 
 export function PaymentControls({
@@ -28,9 +30,11 @@ export function PaymentControls({
   paid: number;
   paidAt: string | null;
 }) {
+  const { language, t } = useI18n();
+  const money = (amount: number) => vnd(amount, language);
   const card = (
-    <a href={`/api/card/${id}`} target="_blank" className="btn">
-      Payment card
+    <a href={`/api/card/${id}?lang=${language}`} target="_blank" className="btn">
+      {t("Payment card")}
     </a>
   );
   const [payment, setPayment] = useOptimistic(
@@ -66,18 +70,36 @@ export function PaymentControls({
 
   if (currentStatus === "paid") {
     const when = payment.paidAt
-      ? ` on ${new Date(payment.paidAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Ho_Chi_Minh" })}`
+      ? t("on {date}", {
+          date: new Date(payment.paidAt).toLocaleDateString(
+            language === "vi" ? "vi-VN" : "en-GB",
+            {
+              day: "numeric",
+              month: "short",
+              timeZone: "Asia/Ho_Chi_Minh",
+            },
+          ),
+        })
       : "";
     return (
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="space-y-1">
-            <span className="chip chip-paid">Paid</span>
-            <div className="text-sm text-muted">{`Paid ${vnd(payment.paid)} ${when}`}</div>
+            <span className="chip chip-paid">{t("Paid")}</span>
+            <div className="text-sm text-muted">
+              {t("Paid {amount}{when}", {
+                amount: money(payment.paid),
+                when: when ? ` ${when}` : "",
+              })}
+            </div>
           </div>
           <div className="flex gap-2">
-            <a href={`/api/card/${id}`} target="_blank" className="btn btn-sm">
-              Payment card
+            <a
+              href={`/api/card/${id}?lang=${language}`}
+              target="_blank"
+              className="btn btn-sm"
+            >
+              {t("Payment card")}
             </a>
             <button
               type="button"
@@ -85,7 +107,7 @@ export function PaymentControls({
               disabled={pending}
               onClick={markAsUnpaid}
             >
-              Undo
+              {t("Undo")}
             </button>
           </div>
         </div>
@@ -96,10 +118,15 @@ export function PaymentControls({
   return (
     <div className="space-y-2">
       <span className={`chip ${statusChip[currentStatus]}`}>
-        {statusLabel[currentStatus]}
+        {t(statusLabel[currentStatus])}
       </span>
       {currentStatus === "partial" && (
-        <p className="text-sm text-partial">{`Received ${vnd(payment.paid)}, ${vnd(due - payment.paid)} left`}</p>
+        <p className="text-sm text-partial">
+          {t("Received {received}, {left} left", {
+            received: money(payment.paid),
+            left: money(due - payment.paid),
+          })}
+        </p>
       )}
       <div className="flex flex-wrap gap-2">
         <button
@@ -108,7 +135,7 @@ export function PaymentControls({
           disabled={pending}
           onClick={markAsPaid}
         >
-          {pending ? "Saving..." : "Paid"}
+          {t(pending ? "Saving..." : "Paid")}
         </button>
         {card}
         {currentStatus === "partial" && (
@@ -118,13 +145,13 @@ export function PaymentControls({
             disabled={pending}
             onClick={markAsUnpaid}
           >
-            Undo
+            {t("Undo")}
           </button>
         )}
       </div>
       <details>
         <summary className="cursor-pointer text-sm text-court">
-          Part payment
+          {t("Part payment")}
         </summary>
         <form
           onSubmit={(event) => {
@@ -145,7 +172,7 @@ export function PaymentControls({
           className="mt-2 flex flex-wrap items-end gap-2"
         >
           <label className="flex-1 basis-32">
-            <span className="label">Received so far</span>
+            <span className="label">{t("Received so far")}</span>
             <input
               name="amount"
               type="number"
@@ -157,7 +184,7 @@ export function PaymentControls({
             />
           </label>
           <button className="btn" disabled={pending}>
-            {pending ? "Saving..." : "Save"}
+            {t(pending ? "Saving..." : "Save")}
           </button>
         </form>
       </details>

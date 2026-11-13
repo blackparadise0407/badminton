@@ -1,10 +1,105 @@
-import { eq, gte } from "drizzle-orm";
+import { asc, eq, gte } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { attendances, players, sessions } from "@/db/schema";
+import {
+  summarizeHostSettlement,
+  type HostSettlementAttendee,
+  type HostSettlementSession,
+} from "./host-settlement";
 import { todayVN } from "./payments";
 
 export type Period = "month" | "all";
+
+export async function getHostSettlement(): Promise<HostSettlementSession[]> {
+  const rows = await db
+    .select({
+      id: sessions.id,
+      date: sessions.date,
+      courts: sessions.courts,
+      courtRatePerHour: sessions.courtRatePerHour,
+      shuttlePrice: sessions.shuttlePrice,
+      shuttlesUsed: sessions.shuttlesUsed,
+      drinksTotal: sessions.drinksTotal,
+      snackTotal: sessions.snackTotal,
+      attendanceId: attendances.id,
+      startHour: attendances.startHour,
+      endHour: attendances.endHour,
+      joinedDrinks: attendances.joinedDrinks,
+      joinedSnack: attendances.joinedSnack,
+      amountDue: attendances.amountDue,
+      amountPaid: attendances.amountPaid,
+    })
+    .from(sessions)
+    .leftJoin(attendances, eq(attendances.sessionId, sessions.id))
+    .orderBy(asc(sessions.date), asc(sessions.id));
+
+  const grouped = new Map<
+    number,
+    {
+      date: string;
+      session: {
+        courts: number;
+        courtRatePerHour: number;
+        shuttlePrice: number;
+        shuttlesUsed: number;
+        drinksTotal: number;
+        snackTotal: number;
+      };
+      attendees: HostSettlementAttendee[];
+    }
+  >();
+
+  for (const row of rows) {
+    let group = grouped.get(row.id);
+    if (!group) {
+      group = {
+        date: row.date,
+        session: {
+          courts: row.courts,
+          courtRatePerHour: row.courtRatePerHour,
+          shuttlePrice: row.shuttlePrice,
+          shuttlesUsed: row.shuttlesUsed,
+          drinksTotal: row.drinksTotal,
+          snackTotal: row.snackTotal,
+        },
+        attendees: [],
+      };
+      grouped.set(row.id, group);
+    }
+
+    if (row.attendanceId !== null) {
+      if (
+        row.startHour === null ||
+        row.endHour === null ||
+        row.joinedDrinks === null ||
+        row.joinedSnack === null ||
+        row.amountDue === null ||
+        row.amountPaid === null
+      ) {
+        throw new Error(`Attendance ${row.attendanceId} is incomplete.`);
+      }
+      group.attendees.push({
+        id: row.attendanceId,
+        startHour: row.startHour,
+        endHour: row.endHour,
+        joinedDrinks: row.joinedDrinks,
+        joinedSnack: row.joinedSnack,
+        amountDue: row.amountDue,
+        amountPaid: row.amountPaid,
+      });
+    }
+  }
+
+  return Array.from(grouped, ([id, group]) => ({
+    ...summarizeHostSettlement({
+      id,
+      date: group.date,
+      session: group.session,
+      attendees: group.attendees,
+    }),
+  }));
+}
 
 export async function getLeaderboard(period: Period) {
   // Vietnam calendar month: "2026-11-01"

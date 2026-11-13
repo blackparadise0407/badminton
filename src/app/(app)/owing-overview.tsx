@@ -6,6 +6,7 @@ import { markPaid } from "@/app/(app)/payment-actions";
 import { OVERDUE_DAYS } from "@/lib/payments";
 import { fmtDate, vnd } from "@/lib/format";
 import { useToast } from "./toast-provider";
+import { useI18n } from "../i18n-provider";
 
 type OwingRow = {
   id: number;
@@ -18,12 +19,15 @@ type OwingRow = {
   days: number;
 };
 
-function relativeDay(days: number) {
-  if (days === 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days === -1) return "tomorrow";
-  if (days < 0) return `in ${Math.abs(days)} days`;
-  return `${days} days ago`;
+function relativeDay(
+  days: number,
+  t: (message: string, values?: Record<string, string | number>) => string,
+) {
+  if (days === 0) return t("today");
+  if (days === 1) return t("yesterday");
+  if (days === -1) return t("tomorrow");
+  if (days < 0) return t("in {days} days", { days: Math.abs(days) });
+  return t("{days} days ago", { days });
 }
 
 export function OwingOverview({
@@ -39,6 +43,7 @@ export function OwingOverview({
   );
   const [pending, startTransition] = useTransition();
   const notify = useToast();
+  const { language, t } = useI18n();
 
   function pay(id: number) {
     startTransition(async () => {
@@ -56,7 +61,7 @@ export function OwingOverview({
   const sum = (items: OwingRow[]) =>
     items.reduce((total, row) => total + row.left, 0);
   const people = (count: number) =>
-    `${count} ${count === 1 ? "person" : "people"}`;
+    t(count === 1 ? "{count} person" : "{count} people", { count });
 
   const section = (
     title: string,
@@ -80,11 +85,15 @@ export function OwingOverview({
                     href={`/sessions/${row.sessionId}`}
                     className="text-sm text-muted underline"
                   >
-                    {`${fmtDate(row.date)}, ${relativeDay(row.days)}${row.paid > 0 ? ", part paid" : ""}`}
+                    {[
+                      fmtDate(row.date, language),
+                      relativeDay(row.days, t),
+                      ...(row.paid > 0 ? [t("part paid")] : []),
+                    ].join(", ")}
                   </Link>
                 </div>
                 <div className="text-[19px] font-bold tabular-nums">
-                  {vnd(row.left)}
+                  {vnd(row.left, language)}
                 </div>
               </div>
               <button
@@ -93,7 +102,7 @@ export function OwingOverview({
                 disabled={pending}
                 onClick={() => pay(row.id)}
               >
-                {pending ? "Saving..." : "Paid"}
+                {t(pending ? "Saving..." : "Paid")}
               </button>
             </li>
           ))}
@@ -106,35 +115,37 @@ export function OwingOverview({
       <section className="panel grid grid-cols-2 divide-x divide-line">
         <div className="p-4">
           <div className="text-sm text-muted">
-            {`Overdue after ${OVERDUE_DAYS} days`}
+            {t("Overdue after {days} days", { days: OVERDUE_DAYS })}
           </div>
           <div
             className={`text-[22px] font-bold leading-tight tabular-nums ${overdue.length ? "text-unpaid" : ""}`}
           >
-            {vnd(sum(overdue))}
+            {vnd(sum(overdue), language)}
           </div>
           <div className="text-sm text-muted">{people(overdue.length)}</div>
         </div>
         <div className="p-4">
-          <div className="text-sm text-muted">Recent, not yet due</div>
+          <div className="text-sm text-muted">
+            {t("Recent, not yet due")}
+          </div>
           <div className="text-[22px] font-bold leading-tight tabular-nums">
-            {vnd(sum(waiting))}
+            {vnd(sum(waiting), language)}
           </div>
           <div className="text-sm text-muted">{people(waiting.length)}</div>
         </div>
       </section>
 
-      {section("Overdue", overdue, true)}
-      {section("Waiting for payment", waiting, false)}
+      {section(t("Overdue"), overdue, true)}
+      {section(t("Waiting for payment"), waiting, false)}
 
       {visibleRows.length === 0 && !hasUnsavedSessions && (
         <div className="panel space-y-3 p-5">
-          <p className="font-medium">Everyone has paid.</p>
+          <p className="font-medium">{t("Everyone has paid.")}</p>
           <p className="text-muted">
-            Create the next session after your next game.
+            {t("Create the next session after your next game.")}
           </p>
           <Link href="/sessions/new" className="btn btn-primary">
-            New session
+            {t("New session")}
           </Link>
         </div>
       )}

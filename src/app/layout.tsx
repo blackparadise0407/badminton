@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
+import { I18nProvider } from "./i18n-provider";
 
 const font = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -18,6 +19,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#1f5c99",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -27,7 +29,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={font.variable}>
-      <body>{children}</body>
+      <body>
+        <I18nProvider>{children}</I18nProvider>
+      </body>
     </html>
   );
 }
